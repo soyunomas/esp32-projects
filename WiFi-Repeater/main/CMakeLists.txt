@@ -1,0 +1,6 @@
+idf_component_register(
+    SRCS "main.c" "wifi_manager.c" "web_server.c" "config_storage.c"
+    INCLUDE_DIRS "."
+    PRIV_REQUIRES esp_wifi esp_event esp_netif nvs_flash esp_http_server dns_server lwip
+    EMBED_FILES "embedded_files/index.html" "embedded_files/styles.css" "embedded_files/app.js"
+)
