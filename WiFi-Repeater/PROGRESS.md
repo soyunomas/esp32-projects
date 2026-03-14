@@ -65,9 +65,9 @@
 - [x] Compilación exitosa
 
 ### 🔲 TODO (próximas sesiones)
-- [ ] Probar OTA en hardware real (flash serial la primera vez por cambio de particiones)
-- [ ] Testing de estabilidad prolongada (24h+)
-- [ ] Captura de pantalla `system.png` para el README
+- [x] Probar OTA en hardware real (flash serial la primera vez por cambio de particiones)
+- [x] Testing de estabilidad prolongada (24h+)
+- [x] Captura de pantalla `system.png` para el README
 - [ ] **mDNS** — Acceder por `repeater.local` en vez de IP
 - [ ] **Auto-reconnect con backoff** — Reintentar conexión STA con delays progresivos ante desconexiones
 - [ ] **Hostname configurable** — Nombre del dispositivo visible en la lista DHCP del router
