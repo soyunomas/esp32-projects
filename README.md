@@ -6,18 +6,24 @@ Colección de proyectos prácticos con ESP32, ESP32-C3, ESP32-S3 y variantes. Ca
 
 | Proyecto | Chip | Descripción |
 |---|---|---|
-| [WiFi-Repeater](WiFi-Repeater/) | ESP32-C3-SuperMini | Repetidor WiFi con interfaz web profesional, NAPT, captive portal y test de conectividad |
+| [WiFi-Repeater](WiFi-Repeater/) | ESP32-C3-SuperMini | Repetidor WiFi con interfaz web profesional, NAPT, captive portal, OTA, auth y factory reset |
+| [Smartbutton-esp32-c5](Smartbutton-esp32-c5/) | ESP32-C5 | Botón IoT dual configurable — HTTP/MQTT, deep sleep, captive portal, LED RGB, OTA |
 
 ## Estructura
 
 ```
 esp32-projects/
 ├── README.md
-├── WiFi-Repeater/          ← Cada proyecto en su propia carpeta
-│   ├── README.md           ← Documentación específica
-│   ├── firmware/            ← Binarios precompilados
-│   ├── img/                 ← Capturas de pantalla
-│   ├── main/                ← Código fuente
+├── WiFi-Repeater/              ← Repetidor WiFi con web UI
+│   ├── README.md
+│   ├── firmware/
+│   ├── img/
+│   ├── main/
+│   └── ...
+├── Smartbutton-esp32-c5/       ← Botón IoT dual HTTP/MQTT
+│   ├── README.md
+│   ├── components/
+│   ├── main/
 │   └── ...
 └── (futuros proyectos)/
 ```
