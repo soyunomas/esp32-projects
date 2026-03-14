@@ -9,7 +9,10 @@
 #include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_wifi_ap_get_sta_list.h"
+#include "esp_ota_ops.h"
+#include "esp_app_format.h"
 #include "lwip/inet.h"
+#include "mbedtls/base64.h"
 
 static const char *TAG = "web_server";
 static httpd_handle_t s_server = NULL;
@@ -35,6 +38,54 @@ static int json_escape(char *dst, size_t dst_size, const char *src)
     }
     dst[j] = '\0';
     return (int)j;
+}
+
+// --- Basic Auth helper ---
+static bool require_auth(httpd_req_t *req)
+{
+    char auth_hdr[256];
+    if (httpd_req_get_hdr_value_str(req, "Authorization", auth_hdr, sizeof(auth_hdr)) != ESP_OK) {
+        httpd_resp_set_status(req, "401 Unauthorized");
+        httpd_resp_set_hdr(req, "WWW-Authenticate", "Basic realm=\"ESP32 Repeater\"");
+        httpd_resp_sendstr(req, "{\"error\":\"Authentication required\"}");
+        return false;
+    }
+
+    if (strncmp(auth_hdr, "Basic ", 6) != 0) {
+        httpd_resp_set_status(req, "401 Unauthorized");
+        httpd_resp_sendstr(req, "{\"error\":\"Invalid auth method\"}");
+        return false;
+    }
+
+    unsigned char decoded[128];
+    size_t decoded_len = 0;
+    if (mbedtls_base64_decode(decoded, sizeof(decoded) - 1, &decoded_len,
+                               (const unsigned char *)(auth_hdr + 6),
+                               strlen(auth_hdr + 6)) != 0) {
+        httpd_resp_set_status(req, "401 Unauthorized");
+        httpd_resp_sendstr(req, "{\"error\":\"Invalid credentials\"}");
+        return false;
+    }
+    decoded[decoded_len] = '\0';
+
+    char *colon = strchr((char *)decoded, ':');
+    if (!colon) {
+        httpd_resp_set_status(req, "401 Unauthorized");
+        httpd_resp_sendstr(req, "{\"error\":\"Invalid credentials\"}");
+        return false;
+    }
+    *colon = '\0';
+    const char *user = (const char *)decoded;
+    const char *pass = colon + 1;
+
+    if (strcmp(user, s_config->web_user) != 0 || strcmp(pass, s_config->web_pass) != 0) {
+        httpd_resp_set_status(req, "401 Unauthorized");
+        httpd_resp_set_hdr(req, "WWW-Authenticate", "Basic realm=\"ESP32 Repeater\"");
+        httpd_resp_sendstr(req, "{\"error\":\"Invalid credentials\"}");
+        return false;
+    }
+
+    return true;
 }
 
 // --- Static file handlers ---
@@ -67,6 +118,7 @@ static esp_err_t js_handler(httpd_req_t *req)
 
 static esp_err_t api_status_handler(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_OK;
     wifi_status_t status;
     wifi_manager_get_status(&status);
 
@@ -102,6 +154,7 @@ static esp_err_t api_status_handler(httpd_req_t *req)
 
 static esp_err_t api_scan_handler(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_OK;
     wifi_ap_record_t ap_records[WIFI_SCAN_MAX_AP];
     uint16_t ap_count = 0;
 
@@ -138,6 +191,7 @@ static esp_err_t api_scan_handler(httpd_req_t *req)
 
 static esp_err_t api_config_get_handler(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_OK;
     char esc_sta_ssid[68], esc_ap_ssid[68];
     json_escape(esc_sta_ssid, sizeof(esc_sta_ssid), s_config->sta_ssid);
     json_escape(esc_ap_ssid, sizeof(esc_ap_ssid), s_config->ap_ssid);
@@ -185,6 +239,7 @@ static bool json_get_int(const char *json, const char *key, int *out)
 
 static esp_err_t api_config_post_handler(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_OK;
     char buf[512];
     int received = httpd_req_recv(req, buf, sizeof(buf) - 1);
     if (received <= 0) {
@@ -225,6 +280,7 @@ static esp_err_t api_config_post_handler(httpd_req_t *req)
 
 static esp_err_t api_clients_handler(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_OK;
     wifi_sta_list_t sta_list;
     wifi_sta_mac_ip_list_t ip_list;
 
@@ -259,6 +315,7 @@ static esp_err_t api_clients_handler(httpd_req_t *req)
 
 static esp_err_t api_ping_handler(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_OK;
     char buf[128];
     int received = httpd_req_recv(req, buf, sizeof(buf) - 1);
     if (received <= 0) {
@@ -299,8 +356,150 @@ static esp_err_t api_ping_handler(httpd_req_t *req)
 
 static esp_err_t api_restart_handler(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_OK;
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, "{\"status\":\"ok\",\"message\":\"Restarting...\"}");
+
+    vTaskDelay(pdMS_TO_TICKS(500));
+    esp_restart();
+    return ESP_OK;
+}
+
+static esp_err_t api_auth_change_handler(httpd_req_t *req)
+{
+    if (!require_auth(req)) return ESP_OK;
+
+    char buf[256];
+    int received = httpd_req_recv(req, buf, sizeof(buf) - 1);
+    if (received <= 0) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No data");
+        return ESP_FAIL;
+    }
+    buf[received] = '\0';
+
+    char new_user[CFG_USER_LEN];
+    char new_pass[CFG_PASS_LEN];
+
+    if (!json_get_string(buf, "new_user", new_user, sizeof(new_user)) ||
+        !json_get_string(buf, "new_pass", new_pass, sizeof(new_pass))) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing new_user or new_pass");
+        return ESP_FAIL;
+    }
+
+    if (strlen(new_user) == 0 || strlen(new_pass) < 4) {
+        httpd_resp_set_type(req, "application/json");
+        httpd_resp_sendstr(req, "{\"status\":\"error\",\"message\":\"User required, password min 4 chars\"}");
+        return ESP_OK;
+    }
+
+    strlcpy(s_config->web_user, new_user, sizeof(s_config->web_user));
+    strlcpy(s_config->web_pass, new_pass, sizeof(s_config->web_pass));
+    config_storage_save(s_config);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{\"status\":\"ok\",\"message\":\"Credentials updated\"}");
+    return ESP_OK;
+}
+
+static esp_err_t api_auth_check_handler(httpd_req_t *req)
+{
+    if (!require_auth(req)) return ESP_OK;
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{\"authenticated\":true}");
+    return ESP_OK;
+}
+
+static esp_err_t api_ota_handler(httpd_req_t *req)
+{
+    if (!require_auth(req)) return ESP_OK;
+
+    const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
+    if (!update_partition) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No OTA partition found");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "OTA: writing to partition '%s' at offset 0x%lx, size %lu",
+             update_partition->label, (unsigned long)update_partition->address,
+             (unsigned long)update_partition->size);
+
+    esp_ota_handle_t ota_handle;
+    esp_err_t ret = esp_ota_begin(update_partition, OTA_WITH_SEQUENTIAL_WRITES, &ota_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "OTA begin failed: %s", esp_err_to_name(ret));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA begin failed");
+        return ESP_FAIL;
+    }
+
+    char *buf = malloc(4096);
+    if (!buf) {
+        esp_ota_abort(ota_handle);
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OOM");
+        return ESP_FAIL;
+    }
+
+    int total_received = 0;
+    int content_len = req->content_len;
+    ESP_LOGI(TAG, "OTA: receiving %d bytes", content_len);
+
+    while (total_received < content_len) {
+        int received = httpd_req_recv(req, buf, 4096);
+        if (received <= 0) {
+            if (received == HTTPD_SOCK_ERR_TIMEOUT) continue;
+            ESP_LOGE(TAG, "OTA: receive error at %d/%d", total_received, content_len);
+            free(buf);
+            esp_ota_abort(ota_handle);
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Receive failed");
+            return ESP_FAIL;
+        }
+
+        ret = esp_ota_write(ota_handle, buf, received);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "OTA: write failed: %s", esp_err_to_name(ret));
+            free(buf);
+            esp_ota_abort(ota_handle);
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA write failed");
+            return ESP_FAIL;
+        }
+
+        total_received += received;
+    }
+
+    free(buf);
+    ESP_LOGI(TAG, "OTA: received %d bytes total", total_received);
+
+    ret = esp_ota_end(ota_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "OTA: validation failed: %s", esp_err_to_name(ret));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA validation failed");
+        return ESP_FAIL;
+    }
+
+    ret = esp_ota_set_boot_partition(update_partition);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "OTA: set boot partition failed: %s", esp_err_to_name(ret));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Set boot partition failed");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "OTA: success, rebooting...");
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{\"status\":\"ok\",\"message\":\"OTA successful, rebooting...\"}");
+
+    vTaskDelay(pdMS_TO_TICKS(500));
+    esp_restart();
+    return ESP_OK;
+}
+
+static esp_err_t api_factory_reset_handler(httpd_req_t *req)
+{
+    if (!require_auth(req)) return ESP_OK;
+
+    ESP_LOGW(TAG, "Factory reset requested!");
+    config_storage_erase();
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{\"status\":\"ok\",\"message\":\"Factory reset done, rebooting...\"}");
 
     vTaskDelay(pdMS_TO_TICKS(500));
     esp_restart();
@@ -320,10 +519,11 @@ esp_err_t web_server_start(repeater_config_t *config)
     s_config = config;
 
     httpd_config_t http_config = HTTPD_DEFAULT_CONFIG();
-    http_config.max_uri_handlers = 14;
+    http_config.max_uri_handlers = 16;
     http_config.uri_match_fn = httpd_uri_match_wildcard;
     http_config.lru_purge_enable = true;
     http_config.stack_size = 8192;
+    http_config.recv_wait_timeout = 30;
 
     esp_err_t ret = httpd_start(&s_server, &http_config);
     if (ret != ESP_OK) {
@@ -339,9 +539,13 @@ esp_err_t web_server_start(repeater_config_t *config)
     httpd_uri_t uri_cfg_get  = { .uri = "/api/config",  .method = HTTP_GET,  .handler = api_config_get_handler };
     httpd_uri_t uri_cfg_post = { .uri = "/api/config",  .method = HTTP_POST, .handler = api_config_post_handler };
     httpd_uri_t uri_clients  = { .uri = "/api/clients", .method = HTTP_GET,  .handler = api_clients_handler };
-    httpd_uri_t uri_ping     = { .uri = "/api/ping",    .method = HTTP_POST, .handler = api_ping_handler };
-    httpd_uri_t uri_restart  = { .uri = "/api/restart", .method = HTTP_POST, .handler = api_restart_handler };
-    httpd_uri_t uri_catchall = { .uri = "/*",           .method = HTTP_GET,  .handler = captive_redirect_handler };
+    httpd_uri_t uri_ping     = { .uri = "/api/ping",        .method = HTTP_POST, .handler = api_ping_handler };
+    httpd_uri_t uri_restart  = { .uri = "/api/restart",     .method = HTTP_POST, .handler = api_restart_handler };
+    httpd_uri_t uri_auth_chg = { .uri = "/api/auth/change", .method = HTTP_POST, .handler = api_auth_change_handler };
+    httpd_uri_t uri_auth_chk = { .uri = "/api/auth/check",  .method = HTTP_GET,  .handler = api_auth_check_handler };
+    httpd_uri_t uri_ota      = { .uri = "/api/ota",           .method = HTTP_POST, .handler = api_ota_handler };
+    httpd_uri_t uri_freset   = { .uri = "/api/factory-reset", .method = HTTP_POST, .handler = api_factory_reset_handler };
+    httpd_uri_t uri_catchall = { .uri = "/*",               .method = HTTP_GET,  .handler = captive_redirect_handler };
 
     httpd_register_uri_handler(s_server, &uri_index);
     httpd_register_uri_handler(s_server, &uri_css);
@@ -353,6 +557,10 @@ esp_err_t web_server_start(repeater_config_t *config)
     httpd_register_uri_handler(s_server, &uri_clients);
     httpd_register_uri_handler(s_server, &uri_ping);
     httpd_register_uri_handler(s_server, &uri_restart);
+    httpd_register_uri_handler(s_server, &uri_auth_chg);
+    httpd_register_uri_handler(s_server, &uri_auth_chk);
+    httpd_register_uri_handler(s_server, &uri_ota);
+    httpd_register_uri_handler(s_server, &uri_freset);
     httpd_register_uri_handler(s_server, &uri_catchall);
 
     ESP_LOGI(TAG, "HTTP server started on port %d", http_config.server_port);

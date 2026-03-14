@@ -103,6 +103,20 @@ nav{display:flex;gap:4px;background:var(--surface);border-radius:var(--radius);p
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--text2);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+.login-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:200}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 24px;width:90%;max-width:340px}
+.login-logo{display:flex;align-items:center;gap:10px;color:var(--accent);margin-bottom:20px;justify-content:center}
+.login-logo h2{font-size:1.1rem;color:var(--text)}
+.login-error{color:var(--red);font-size:.8rem;text-align:center;margin-top:10px}
+
+.ota-progress{margin-top:12px}
+.ota-bar{width:100%;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.ota-fill{height:100%;border-radius:3px;background:var(--accent);width:0;transition:width .3s}
+.ota-status{font-size:.8rem;color:var(--text2);margin-top:4px;display:block}
+
+input[type="file"]{padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.85rem;width:100%}
+input[type="file"]::file-selector-button{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:.8rem;margin-right:8px}
+
 @media(max-width:380px){
   .cards{grid-template-columns:1fr}
   .form-row{flex-direction:column;gap:0}

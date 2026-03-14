@@ -25,15 +25,18 @@ void config_storage_set_defaults(repeater_config_t *config)
     strlcpy(config->ap_pass, "12345678", sizeof(config->ap_pass));
     config->ap_channel = 1;
     config->ap_max_conn = 4;
+    strlcpy(config->web_user, "admin", sizeof(config->web_user));
+    strlcpy(config->web_pass, "admin", sizeof(config->web_pass));
 }
 
 esp_err_t config_storage_load(repeater_config_t *config)
 {
+    config_storage_set_defaults(config);
+
     nvs_handle_t handle;
     esp_err_t ret = nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle);
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "NVS namespace not found, using defaults");
-        config_storage_set_defaults(config);
         return ESP_ERR_NOT_FOUND;
     }
 
@@ -50,27 +53,20 @@ esp_err_t config_storage_load(repeater_config_t *config)
     }
 
     len = sizeof(config->ap_ssid);
-    if (nvs_get_str(handle, "ap_ssid", config->ap_ssid, &len) != ESP_OK) {
-        strlcpy(config->ap_ssid, "ESP32-Repeater", sizeof(config->ap_ssid));
-    }
+    nvs_get_str(handle, "ap_ssid", config->ap_ssid, &len);
 
     len = sizeof(config->ap_pass);
-    if (nvs_get_str(handle, "ap_pass", config->ap_pass, &len) != ESP_OK) {
-        strlcpy(config->ap_pass, "12345678", sizeof(config->ap_pass));
-    }
+    nvs_get_str(handle, "ap_pass", config->ap_pass, &len);
 
     uint8_t val;
-    if (nvs_get_u8(handle, "ap_channel", &val) == ESP_OK) {
-        config->ap_channel = val;
-    } else {
-        config->ap_channel = 1;
-    }
+    if (nvs_get_u8(handle, "ap_channel", &val) == ESP_OK) config->ap_channel = val;
+    if (nvs_get_u8(handle, "ap_max_conn", &val) == ESP_OK) config->ap_max_conn = val;
 
-    if (nvs_get_u8(handle, "ap_max_conn", &val) == ESP_OK) {
-        config->ap_max_conn = val;
-    } else {
-        config->ap_max_conn = 4;
-    }
+    len = sizeof(config->web_user);
+    nvs_get_str(handle, "web_user", config->web_user, &len);
+
+    len = sizeof(config->web_pass);
+    nvs_get_str(handle, "web_pass", config->web_pass, &len);
 
     nvs_close(handle);
     ESP_LOGI(TAG, "Config loaded: STA='%s' AP='%s' CH=%d",
@@ -93,6 +89,8 @@ esp_err_t config_storage_save(const repeater_config_t *config)
     nvs_set_str(handle, "ap_pass", config->ap_pass);
     nvs_set_u8(handle, "ap_channel", config->ap_channel);
     nvs_set_u8(handle, "ap_max_conn", config->ap_max_conn);
+    nvs_set_str(handle, "web_user", config->web_user);
+    nvs_set_str(handle, "web_pass", config->web_pass);
 
     ret = nvs_commit(handle);
     nvs_close(handle);

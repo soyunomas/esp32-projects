@@ -4,9 +4,13 @@ Repetidor WiFi completo basado en **ESP32-C3-SuperMini**. Se conecta a una red W
 
 ## Capturas de pantalla
 
-| Dashboard | Configuración | Clientes |
-|:-:|:-:|:-:|
-| ![Dashboard](img/dashboard.png) | ![Config](img/config.png) | ![Clients](img/clients.png) |
+| Dashboard | Configuración |
+|:-:|:-:|
+| ![Dashboard](img/dashboard.png) | ![Config](img/config.png) |
+
+| Clientes | System |
+|:-:|:-:|
+| ![Clients](img/clients.png) | ![System](img/system.png) |
 
 ## Características
 
@@ -18,6 +22,9 @@ Repetidor WiFi completo basado en **ESP32-C3-SuperMini**. Se conecta a una red W
 - 📊 **Dashboard en tiempo real** — RSSI, clientes conectados, heap libre, uptime
 - 🏓 **Test de conectividad** — Ping integrado (ICMP) con resolución DNS para verificar acceso a internet
 - 🔄 **DNS automático** — Propaga el DNS upstream a los clientes del AP vía DHCP
+- 🔒 **Autenticación web** — HTTP Basic Auth con credenciales configurables
+- 🔄 **OTA Updates** — Actualización de firmware vía web con dual partitions y rollback automático
+- 🗑️ **Factory Reset** — Restaurar configuración de fábrica desde la interfaz web
 
 ## Hardware necesario
 
@@ -65,7 +72,8 @@ esptool.py --chip esp32c3 -b 460800 \
   write_flash --flash_mode dio --flash_size 4MB --flash_freq 80m \
   0x0      firmware/bootloader.bin \
   0x8000   firmware/partition-table.bin \
-  0x10000  firmware/wifi_repeater.bin
+  0xf000   firmware/ota_data_initial.bin \
+  0x20000  firmware/wifi_repeater.bin
 ```
 
 > ⚠️ Sustituye el puerto si es necesario añadiendo `-p /dev/ttyACM0` (Linux) o `-p COM3` (Windows).
@@ -108,10 +116,32 @@ idf.py -p /dev/ttyACM0 flash monitor
 1. **Flashear** el firmware en el ESP32-C3-SuperMini
 2. **Conectarse** a la red WiFi **`ESP32-Repeater`** (contraseña: `12345678`)
 3. **Abrir** [http://192.168.4.1](http://192.168.4.1) en el navegador (o esperar al captive portal)
-4. Ir a **Config** → **Scan Networks** → seleccionar la red WiFi a repetir
-5. Introducir la contraseña y pulsar **Save & Apply**
-6. Verificar en **Dashboard** que aparece la IP y el indicador de señal
-7. Usar **Ping** (en el dashboard) para comprobar que hay acceso a internet
+4. **Login** con usuario `admin` y contraseña `admin`
+5. Ir a **Config** → **Scan Networks** → seleccionar la red WiFi a repetir
+6. Introducir la contraseña y pulsar **Save & Apply**
+7. Verificar en **Dashboard** que aparece la IP y el indicador de señal
+8. Usar **Ping** (en el dashboard) para comprobar que hay acceso a internet
+
+### Credenciales por defecto
+
+| Campo | Valor |
+|---|---|
+| **Usuario** | `admin` |
+| **Contraseña** | `admin` |
+
+> 🔐 Puedes cambiar las credenciales desde la pestaña **System** → **Web Credentials** en la interfaz web.
+
+### Actualización OTA
+
+1. Compilar el nuevo firmware (`idf.py build`)
+2. Ir a la pestaña **System** → **Firmware Update (OTA)**
+3. Seleccionar el archivo `build/wifi_repeater.bin`
+4. Pulsar **Upload & Flash** — el dispositivo se reinicia automáticamente
+5. Si el nuevo firmware falla, se revierte al anterior automáticamente (rollback)
+
+### Factory Reset
+
+Desde la pestaña **System** → **Factory Reset** puedes restaurar toda la configuración a valores de fábrica. El dispositivo borra NVS y reinicia con los valores por defecto (AP: `ESP32-Repeater`, pass: `12345678`, credenciales: `admin/admin`).
 
 ## API REST
 
@@ -124,6 +154,12 @@ idf.py -p /dev/ttyACM0 flash monitor
 | `/api/clients` | GET | Listar clientes conectados al AP con MAC e IP |
 | `/api/ping` | POST | Test de conectividad ICMP `{"target":"8.8.8.8"}` |
 | `/api/restart` | POST | Reiniciar el dispositivo |
+| `/api/auth/check` | GET | Verificar credenciales (login) |
+| `/api/auth/change` | POST | Cambiar credenciales `{"new_user":"...","new_pass":"..."}` |
+| `/api/ota` | POST | Subir firmware binario (OTA update) |
+| `/api/factory-reset` | POST | Restaurar configuración de fábrica y reiniciar |
+
+> 🔒 Todos los endpoints `/api/*` requieren HTTP Basic Auth.
 
 ## Estructura del proyecto
 
@@ -132,20 +168,22 @@ WiFi-Repeater/
 ├── README.md                  # Este archivo
 ├── CMakeLists.txt             # Build system ESP-IDF
 ├── sdkconfig.defaults         # Configuración del SDK
-├── partitions.csv             # Tabla de particiones
+├── partitions.csv             # Tabla de particiones (OTA dual: ota_0 + ota_1)
 ├── firmware/                  # Binarios precompilados
 │   ├── bootloader.bin
 │   ├── partition-table.bin
+│   ├── ota_data_initial.bin
 │   └── wifi_repeater.bin
 ├── img/                       # Capturas de pantalla
 │   ├── dashboard.png
 │   ├── config.png
-│   └── clients.png
+│   ├── clients.png
+│   └── system.png
 ├── main/
-│   ├── main.c                 # Entry point
+│   ├── main.c                 # Entry point + OTA rollback validation
 │   ├── wifi_manager.c/h       # WiFi STA+AP, NAPT, ping
-│   ├── web_server.c/h         # HTTP server + API REST
-│   ├── config_storage.c/h     # Persistencia NVS
+│   ├── web_server.c/h         # HTTP server + API REST + Auth + OTA
+│   ├── config_storage.c/h     # Persistencia NVS (WiFi + web credentials)
 │   └── embedded_files/        # Web UI embebida
 │       ├── index.html
 │       ├── styles.css
@@ -158,9 +196,9 @@ WiFi-Repeater/
 
 ```
 ┌─────────────────┐         ┌───────────────────┐         ┌─────────────┐
-│  Dispositivo    │  WiFi   │  ESP32-C3         │  WiFi   │  Router     │
-│  (móvil, PC)    │◄───────►│  AP ◄─ NAPT ─► STA│◄───────►│  (Internet) │
-│                 │  AP     │  192.168.4.1      │  STA    │             │
+│  Dispositivo     │  WiFi   │  ESP32-C3          │  WiFi   │  Router      │
+│  (móvil, PC)     │◄──────►│  AP ◄── NAPT ──► STA│◄──────►│  (Internet)  │
+│                  │  AP     │  192.168.4.1       │  STA    │              │
 └─────────────────┘         └───────────────────┘         └─────────────┘
 ```
 

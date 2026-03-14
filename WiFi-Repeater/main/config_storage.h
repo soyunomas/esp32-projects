@@ -4,6 +4,7 @@
 
 #define CFG_SSID_LEN 33
 #define CFG_PASS_LEN 65
+#define CFG_USER_LEN 33
 
 typedef struct {
     char sta_ssid[CFG_SSID_LEN];
@@ -12,6 +13,8 @@ typedef struct {
     char ap_pass[CFG_PASS_LEN];
     uint8_t ap_channel;
     uint8_t ap_max_conn;
+    char web_user[CFG_USER_LEN];
+    char web_pass[CFG_PASS_LEN];
 } repeater_config_t;
 
 esp_err_t config_storage_init(void);
