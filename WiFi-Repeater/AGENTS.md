@@ -76,9 +76,25 @@ idf.py menuconfig
 
 ## Key Features
 1. WiFi Repeater (STA+AP simultáneo con NAPT)
-2. Web UI profesional para configuración
+2. Web UI profesional para configuración (dark theme, responsive)
 3. Escaneo de redes WiFi disponibles
 4. Captive portal para configuración inicial
 5. Persistencia de configuración en NVS
 6. Estadísticas en tiempo real (clientes, RSSI, tráfico)
-7. OTA updates (futuro)
+7. OTA updates via web (dual partitions ota_0/ota_1 + rollback automático)
+8. Autenticación web (HTTP Basic Auth, credenciales únicas por MAC, persistidas en NVS)
+9. Test de conectividad (ICMP ping + resolución DNS)
+10. Factory reset desde la interfaz web (borra NVS + reinicia con defaults)
+
+## Web Authentication
+- **Usuario por defecto**: `admin`
+- **Password por defecto**: `admin`
+- Cambiable desde System → Web Credentials en la UI
+- Todos los endpoints `/api/*` requieren HTTP Basic Auth
+- Archivos estáticos (`/`, `/styles.css`, `/app.js`) sin autenticación
+
+## OTA Updates
+- Tabla de particiones: `ota_0` + `ota_1` (2x ~1.94MB en flash 4MB)
+- Upload binario raw via `POST /api/ota` (streaming por chunks, no multipart)
+- Rollback automático: `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`
+- Primera vez tras cambio de particiones requiere flash serial
