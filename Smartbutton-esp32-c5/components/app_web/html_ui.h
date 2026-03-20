@@ -141,6 +141,8 @@ input[type="file"]{padding:8px;cursor:pointer;font-size:.85rem}
 <div class="tab act" onclick="swTab(1,this)">Botón 1</div>
 <div class="tab" onclick="swTab(2,this)">Botón 2</div>
 </div>
+<label>Nombre del Botón</label>
+<input id="bname" placeholder="Botón 1" maxlength="30">
 <label>Tipo de Acción</label>
 <select id="batype" onchange="uiTog()">
 <option value="0">Petición HTTP</option>
@@ -209,6 +211,8 @@ input[type="file"]{padding:8px;cursor:pointer;font-size:.85rem}
 </div>
 <div class="card">
 <h2>🔧 Avanzado</h2>
+<label>Tiempo de Reset (seg)</label>
+<input id="reset_time" type="number" min="3" max="60" value="8">
 <div class="r2">
 <div><label>Reintentos WiFi</label>
 <input id="sta_retries" type="number" min="1" max="20" value="5"></div>
@@ -275,7 +279,8 @@ var u=$('luser').value,p=$('lpass').value;
 if(!u||!p){msg('lmsg',0,'Introduce credenciales');return;}
 A='Basic '+btoa(u+':'+p);
 fetch('/api/verify',{headers:{'Authorization':A}}).then(function(r){
-if(r.ok){$('login').classList.add('hid');$('app').classList.remove('hid');$('auser').value=u;curP=p;loadBtn(1);loadSys();loadMqtt();}
+if(r.ok){$('login').classList.add('hid');$('app').classList.remove('hid');$('auser').value=u;curP=p;loadBtn(1);loadSys();loadMqtt();
+af('/api/btn?id=2').then(function(r){return r.json()}).then(function(d){if(d.name)document.querySelectorAll('.tab')[1].textContent=d.name;});}
 else{A='';msg('lmsg',0,'Credenciales incorrectas');}
 }).catch(function(){msg('lmsg',0,'Error de conexion')});
 }
@@ -322,11 +327,11 @@ af('/api/mqtt').then(function(r){return r.json()}).then(function(d){
 $('mhost').value=d.host||'';$('mport').value=d.port||1883;$('muser').value=d.user||'';$('mclid').value=d.clid||'';$('men').checked=d.en;
 }).catch(function(){});
 }
-function gBD(){return{id:cBtn,atype:parseInt($('batype').value),target:$('btarget').value,method:parseInt($('bmethod').value),payload:$('bpayload').value||'',timeout:parseInt($('btimeout').value||'5')*1000,cooldown:parseFloat($('bcooldown').value||'2')*1000,nocache:$('bnocache').checked};}
+function gBD(){return{id:cBtn,name:$('bname').value,atype:parseInt($('batype').value),target:$('btarget').value,method:parseInt($('bmethod').value),payload:$('bpayload').value||'',timeout:parseInt($('btimeout').value||'5')*1000,cooldown:parseFloat($('bcooldown').value||'2')*1000,nocache:$('bnocache').checked};}
 function saveBtn(){
 var d=gBD();if(!d.target){msg('bmsg',0,'Falta destino');return;}
 af('/api/btn',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)
-}).then(function(r){return r.json()}).then(function(d){msg('bmsg',d.ok,d.ok?'Boton '+cBtn+' guardado':'Error');
+}).then(function(r){return r.json()}).then(function(d){msg('bmsg',d.ok,d.ok?'Boton '+cBtn+' guardado':'Error');if(d.ok){var nm=$('bname').value;if(nm)document.querySelectorAll('.tab')[cBtn-1].textContent=nm;}
 }).catch(function(){msg('bmsg',0,'Error de conexion')});
 }
 function testBtn(){
@@ -342,8 +347,10 @@ else msg('bmsg',0,'Falló - Status: '+d.status);
 }
 function loadBtn(n){
 af('/api/btn?id='+n).then(function(r){return r.json()}).then(function(d){
+$('bname').value=d.name||'';
 $('batype').value=d.atype||0;$('btarget').value=d.target||'';$('bmethod').value=d.method||0;$('bpayload').value=d.payload||'';
 $('btimeout').value=Math.round((d.timeout||5000)/1000);$('bcooldown').value=(d.cooldown||2000)/1000;$('bnocache').checked=!!d.nocache;uiTog();
+var nm=d.name||'';if(nm)document.querySelectorAll('.tab')[cBtn-1].textContent=nm;
 }).catch(function(){});
 }
 function loadSys(){
@@ -358,6 +365,7 @@ if(d.ap_channel !== undefined)$('ap_channel').value=d.ap_channel;
 if(d.wakeup_timeout !== undefined)$('wk_timeout').value=d.wakeup_timeout;
 if(d.config_awake !== undefined)$('cfg_awake').value=d.config_awake;
 if(d.debounce !== undefined)$('debounce').value=d.debounce;
+if(d.reset_time !== undefined)$('reset_time').value=d.reset_time;
 }).catch(function(){});
 }
 function saveAdmin(){
@@ -368,7 +376,7 @@ if(p && p.length<4){msg('amsg',0,'Clave muy corta');return;}
 var body={user:u, ap_ssid:aps, ap_pass:app, pure_client:pc, deep_sleep:ds,
 sta_max_retries:parseInt($('sta_retries').value), ap_channel:parseInt($('ap_channel').value),
 wakeup_timeout:parseInt($('wk_timeout').value), config_awake:parseInt($('cfg_awake').value),
-debounce:parseInt($('debounce').value)};
+debounce:parseInt($('debounce').value), reset_time:parseInt($('reset_time').value)};
 if(p)body.pass=p;
 af('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
 .then(function(res){return res.json()}).then(function(d){

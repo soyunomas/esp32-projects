@@ -2,6 +2,7 @@
 #include "app_nvs.h"
 #include "app_core.h"
 #include "app_led.h"
+#include "app_btn_leds.h"
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "esp_crt_bundle.h"
@@ -69,6 +70,7 @@ void http_execute_task(void *pvParameters) {
     }
 
     esp_http_client_cleanup(client);
+    app_btn_leds_off(btn_id);
     app_set_state(STATE_NORMAL);
     xEventGroupSetBits(app_event_group, EVENT_HTTP_DONE);
     vTaskDelete(NULL);

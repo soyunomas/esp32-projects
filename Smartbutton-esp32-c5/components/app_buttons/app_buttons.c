@@ -5,6 +5,7 @@
 #include "app_mqtt.h"
 #include "app_led.h"
 #include "app_nvs.h"
+#include "app_btn_leds.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 
@@ -28,6 +29,7 @@ static void trigger_action(int btn_id) {
     }
 
     ESP_LOGI(TAG, "Executing BTN%d Action Type: %d (0=HTTP, 1=MQTT)", btn_id, cfg.action_type);
+    app_btn_leds_on(btn_id);
 
     if (cfg.action_type == 1) {
         // MQTT
@@ -100,7 +102,20 @@ static void button_task(void *arg) {
             }
             both_duration += POLL_RATE_MS;
 
+            // Alternate LEDs during hold (toggle every 250ms)
+            bool led_phase = ((both_duration / 250) % 2) == 0;
+            app_btn_leds_on(led_phase ? 1 : 2);
+            app_btn_leds_off(led_phase ? 2 : 1);
+
             if (both_duration > reset_time_ms) {
+                app_btn_leds_off_all();
+                for (int i = 0; i < 5; i++) {
+                    app_btn_leds_on(1);
+                    app_btn_leds_on(2);
+                    vTaskDelay(pdMS_TO_TICKS(100));
+                    app_btn_leds_off_all();
+                    vTaskDelay(pdMS_TO_TICKS(100));
+                }
                 app_set_state(STATE_FACTORY_RESET);
                 vTaskDelay(portMAX_DELAY);
             } else if (both_duration > warn_time_ms && app_get_state() != STATE_RESET_WARNING) {
@@ -110,6 +125,7 @@ static void button_task(void *arg) {
             if (both_held) {
                 both_held = false;
                 both_duration = 0;
+                app_btn_leds_off_all();
                 if (app_get_state() == STATE_RESET_WARNING) {
                     app_set_state(STATE_NORMAL);
                 } else {

@@ -102,6 +102,7 @@ esp_err_t app_nvs_save_button(int btn_id, button_config_t *config) {
     esp_err_t err = nvs_open(namespace, NVS_READWRITE, &my_handle);
     if (err != ESP_OK) return err;
 
+    nvs_set_str(my_handle, "name", config->name);
     nvs_set_i32(my_handle, "atype", config->action_type);
     nvs_set_str(my_handle, "url", config->target); // Key legacy "url", usamos para target
     nvs_set_i32(my_handle, "method", config->method);
@@ -121,11 +122,16 @@ esp_err_t app_nvs_get_button_config(int btn_id, button_config_t *config) {
 
     if (nvs_open(namespace, NVS_READONLY, &my_handle) != ESP_OK) return ESP_FAIL;
 
+    size_t size = sizeof(config->name);
+    if (nvs_get_str(my_handle, "name", config->name, &size) != ESP_OK) {
+        config->name[0] = 0;
+    }
+
     int32_t atype = 0;
     nvs_get_i32(my_handle, "atype", &atype);
     config->action_type = atype;
 
-    size_t size = sizeof(config->target);
+    size = sizeof(config->target);
     nvs_get_str(my_handle, "url", config->target, &size);
     
     int32_t method = 0;

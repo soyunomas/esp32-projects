@@ -21,6 +21,7 @@ typedef struct {
 
 // Estructura Botón
 typedef struct {
+    char name[32];
     int action_type; // 0=HTTP, 1=MQTT
     char target[512]; // URL (HTTP) o Topic (MQTT)
     int method;      // 0=GET, 1=POST (Solo HTTP)

@@ -9,6 +9,7 @@ Botón IoT dual configurable basado en ESP32-C5. Pulsa un botón físico y ejecu
 ## Características
 
 - **2 botones físicos** con acción configurable cada uno (HTTP GET/POST o MQTT).
+- **Nombres personalizables** — pon nombre propio a cada botón (ej: "Botón Rojo", "Alarma") desde la web.
 - **Soporte MQTT** — publica mensajes a un broker MQTT al pulsar un botón.
 - **Portal web captivo** — al conectarte a su red, se abre automáticamente.
 - **Interfaz Dark moderna** — panel responsive con estilo oscuro.
@@ -21,10 +22,12 @@ Botón IoT dual configurable basado en ESP32-C5. Pulsa un botón físico y ejecu
 - **Modo Cliente Puro** — oculta el AP propio tras conectar a tu red WiFi para mayor seguridad.
 - **AP configurable** — SSID y contraseña del punto de acceso personalizables (abierto o WPA2).
 - **Feedback visual RTOS** — LED RGB WS2812 con notificaciones FreeRTOS en tiempo real.
-- **Botón de test** para probar las acciones HTTP y MQTT desde el propio panel web.
-- **Factory reset dinámico** — mantén ambos botones (tiempo configurable desde la web).
+- **LEDs integrados en botones** — los LEDs rojo (GPIO 6) y verde (GPIO 8) del propio botón confirman visualmente la pulsación y el estado de conexión WiFi.
+- **Botón de test** para probar las acciones HTTP y MQTT desde el propio panel web, con LED del botón encendido durante la prueba.
+- **Factory reset dinámico** — mantén ambos botones (tiempo configurable desde la web), con LEDs alternados durante la pulsación y parpadeo rápido al ejecutar.
+- **Indicación de no configurado** — al arrancar sin WiFi, ambos LEDs parpadean 5 veces rápido para avisar visualmente.
 - **Actualizaciones OTA** — sube nuevos firmwares `.bin` directamente desde el panel de control.
-- **Configuración avanzada** — reintentos WiFi, canal AP, timeouts de deep sleep y anti-rebote de botones ajustables desde la web.
+- **Configuración avanzada** — reintentos WiFi, canal AP, tiempo de reset, timeouts de deep sleep y anti-rebote de botones ajustables desde la web.
 - **Fallback automático** — si falla la conexión WiFi (reintentos configurables), vuelve a crear su propio AP.
 
 ## Hardware
@@ -38,8 +41,10 @@ Botón IoT dual configurable basado en ESP32-C5. Pulsa un botón físico y ejecu
 
 | Función | GPIO | Configuración |
 |---------|------|---------------|
-| Botón 1 | **GPIO 4** | Pull-up interno, active-low |
-| Botón 2 | **GPIO 5** | Pull-up interno, active-low |
+| Botón 1 (Rojo) | **GPIO 4** | Pull-up interno, active-low |
+| Botón 2 (Verde) | **GPIO 5** | Pull-up interno, active-low |
+| LED Botón 1 (Rojo) | **GPIO 6** | Salida digital, LED integrado en botón |
+| LED Botón 2 (Verde) | **GPIO 8** | Salida digital, LED integrado en botón |
 | LED RGB | **GPIO 27** | Salida digital (Protocolo WS2812 / NeoPixel) |
 
 ### Esquema de conexión
@@ -49,8 +54,10 @@ Botón IoT dual configurable basado en ESP32-C5. Pulsa un botón físico y ejecu
 ```text
 ESP32-C5
 ┌──────────┐
-│ GPIO 4   ├──── BTN1 ──── GND
-│ GPIO 5   ├──── BTN2 ──── GND
+│ GPIO 4   ├──── BTN1 (Rojo) ──── GND
+│ GPIO 5   ├──── BTN2 (Verde) ──── GND
+│ GPIO 6   ├──── LED BTN1 (Rojo, integrado en botón)
+│ GPIO 8   ├──── LED BTN2 (Verde, integrado en botón)
 │          │
 │ GPIO 27  ├──── Data IN (LED WS2812 onboard)
 │ 5V / 3V3 ├──── VDD     (LED WS2812)
@@ -137,7 +144,7 @@ idf.py build
 7. En **Botones**, configura las acciones HTTP o MQTT que necesites.
 8. Guarda. El dispositivo se reiniciará y se conectará a tu red.
 
-### Comportamiento del LED RGB
+### Comportamiento del LED RGB (WS2812 onboard)
 
 El dispositivo cuenta con un sistema de estados RTOS que responde **al instante** mediante notificaciones FreeRTOS:
 
@@ -152,6 +159,23 @@ El dispositivo cuenta con un sistema de estados RTOS que responde **al instante*
 | **Aviso de Reset Inminente** | 🔴 Rojo | Parpadeo muy rápido (100ms) |
 | **Reset en curso** | 🔴 Rojo | **Fijo** |
 | **Entrando en Deep Sleep** | 🔵 Azul | Flash breve de despedida |
+
+### Comportamiento de los LEDs de botón (Rojo GPIO 6 / Verde GPIO 8)
+
+Los LEDs integrados en los propios botones proporcionan feedback visual incluso con la caja cerrada:
+
+| Situación | LED Rojo (BTN1) | LED Verde (BTN2) |
+|-----------|-----------------|------------------|
+| **Sin configurar (arranque)** | 🔴🟢 5 parpadeos rápidos simultáneos (100ms) | |
+| **Conectando a WiFi** | 🔴🟢 Parpadeo alternado rojo↔verde (300ms) |  |
+| **WiFi conectado** | Apagado | 🟢 2 flashes verdes y apaga |
+| **WiFi fallido** | 🔴 3 flashes rojos y apaga | Apagado |
+| **Botón 1 pulsado** | 🔴 Encendido mientras procesa | Apagado |
+| **Botón 2 pulsado** | Apagado | 🟢 Encendido mientras procesa |
+| **Test desde la web** | 🔴/🟢 LED del botón encendido durante la prueba | |
+| **Reset (ambos botones)** | 🔴🟢 Parpadeo alternado (250ms) | |
+| **Reset ejecutado** | 🔴🟢 5 parpadeos rápidos simultáneos (100ms) | |
+| **Deep Sleep** | Apagado | Apagado |
 
 ### Deep Sleep (Modo bajo consumo)
 
@@ -168,11 +192,11 @@ Activable desde **Sistema > Modo Cliente Puro**. Oculta el punto de acceso propi
 
 ### Factory Reset (Restaurar de fábrica)
 
-Mantén **ambos botones pulsados simultáneamente**. Por defecto el tiempo es de 8 segundos (configurable en la web). 
+Mantén **ambos botones pulsados simultáneamente**. Por defecto el tiempo es de 8 segundos (configurable en **Sistema > Avanzado > Tiempo de Reset**). 
 
-- **Fase 1 (0 a T-3 seg):** El LED parpadea lento advirtiendo de la pulsación prolongada. Si sueltas los botones, la acción se cancela y se retoma la normalidad.
-- **Fase 2 (Últimos 3 seg):** El LED parpadeará en rojo rápidamente advirtiendo del borrado inminente.
-- **Fase 3 (Fin del tiempo):** El LED se queda en Rojo fijo, la placa se formatea por completo (borrando NVS) y vuelve a iniciar en Modo AP de fábrica.
+- **Fase 1 (0 a T-3 seg):** El LED RGB parpadea lento y los LEDs de los botones se alternan (rojo↔verde cada 250ms) advirtiendo de la pulsación prolongada. Si sueltas los botones, la acción se cancela y se retoma la normalidad.
+- **Fase 2 (Últimos 3 seg):** El LED RGB parpadeará en rojo rápidamente advirtiendo del borrado inminente. Los LEDs de botón siguen alternando.
+- **Fase 3 (Fin del tiempo):** Ambos LEDs de botón parpadean 5 veces rápidamente, el LED RGB se queda en Rojo fijo, la placa se formatea por completo (borrando NVS) y vuelve a iniciar en Modo AP de fábrica.
 
 También se puede realizar Factory Reset desde el panel web en **Sistema > Factory Reset**.
 
@@ -182,6 +206,7 @@ Desde la web puedes ajustar parámetros avanzados por cada botón:
 
 | Parámetro | Descripción |
 |-----------|-------------|
+| **Nombre** | Nombre personalizado del botón (hasta 30 caracteres). Se muestra en las pestañas de la UI |
 | **Tipo de Acción** | `Petición HTTP` o `Mensaje MQTT` |
 | **URL / Topic** | Dirección HTTP a llamar (soporta HTTP y HTTPS) o topic MQTT donde publicar |
 | **Método** | `GET` o `POST` (solo HTTP) |
@@ -280,6 +305,7 @@ Desde **Sistema > Avanzado** se pueden ajustar parámetros internos del firmware
 
 | Parámetro | Descripción | Rango | Default |
 |-----------|-------------|-------|---------|
+| **Tiempo de Reset** | Segundos manteniendo ambos botones para factory reset | 3 – 60 | 8 |
 | **Reintentos WiFi** | Intentos de reconexión antes de activar el fallback AP | 1 – 20 | 5 |
 | **Canal AP WiFi** | Canal del punto de acceso propio (para evitar interferencias) | 1 – 13 | 1 |
 | **Timeout wakeup** | Segundos máximos despierto tras wakeup por botón (deep sleep) | 10 – 120 | 30 |
@@ -298,6 +324,7 @@ Este proyecto está diseñado en **C** con **ESP-IDF** y divide sus responsabili
 - `app_mqtt`: Cliente MQTT oneshot — conecta, publica y desconecta por cada acción de botón.
 - `app_buttons`: Polling GPIO anti-rebotes con lógica dinámica para Factory Reset y despacho HTTP/MQTT.
 - `app_led`: Feedback visual en tiempo real usando `led_strip` (WS2812) y notificaciones RTOS (`xTaskNotify`).
+- `app_btn_leds`: Control de los LEDs integrados en los botones (GPIO 6/8) para feedback visual de pulsación y estado WiFi.
 - `app_dns`: Servidor DNS ultraligero para secuestro web (Captive Portal).
 
 ### Endpoints del API REST

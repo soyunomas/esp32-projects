@@ -2,6 +2,7 @@
 #include "mqtt_client.h"
 #include "app_core.h"
 #include "app_led.h"
+#include "app_btn_leds.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -40,8 +41,15 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
+typedef struct {
+    button_config_t cfg;
+    int btn_id;
+} mqtt_task_params_t;
+
 static void mqtt_task(void *pvParameters) {
-    button_config_t *btn_cfg = (button_config_t *)pvParameters;
+    mqtt_task_params_t *params = (mqtt_task_params_t *)pvParameters;
+    button_config_t *btn_cfg = &params->cfg;
+    int btn_id = params->btn_id;
     
     mqtt_config_t mcfg;
     app_nvs_get_mqtt(&mcfg);
@@ -49,7 +57,8 @@ static void mqtt_task(void *pvParameters) {
     if (!mcfg.enabled || strlen(mcfg.host) == 0) {
         ESP_LOGE(TAG, "MQTT not configured or disabled");
         app_led_signal_error();
-        free(btn_cfg);
+        app_btn_leds_off(btn_id);
+        free(params);
         app_set_state(STATE_NORMAL);
         xEventGroupSetBits(app_event_group, EVENT_HTTP_DONE);
         vTaskDelete(NULL);
@@ -100,7 +109,8 @@ static void mqtt_task(void *pvParameters) {
     esp_mqtt_client_destroy(client);
     
     vEventGroupDelete(mqtt_event_group);
-    free(btn_cfg);
+    app_btn_leds_off(btn_id);
+    free(params);
     
     app_set_state(STATE_NORMAL);
     xEventGroupSetBits(app_event_group, EVENT_HTTP_DONE); // Usamos el mismo bit para señalizar fin de tarea
@@ -110,11 +120,11 @@ static void mqtt_task(void *pvParameters) {
 void app_mqtt_publish_oneshot(int btn_id, button_config_t *btn_cfg) {
     app_set_state(STATE_HTTP_REQ); // Estado visual de "ocupado"
     
-    // Duplicamos cfg para pasarlo al task
-    button_config_t *cfg_copy = malloc(sizeof(button_config_t));
-    memcpy(cfg_copy, btn_cfg, sizeof(button_config_t));
+    mqtt_task_params_t *params = malloc(sizeof(mqtt_task_params_t));
+    memcpy(&params->cfg, btn_cfg, sizeof(button_config_t));
+    params->btn_id = btn_id;
 
-    xTaskCreate(mqtt_task, "mqtt_pub", 4096, (void*)cfg_copy, 5, NULL);
+    xTaskCreate(mqtt_task, "mqtt_pub", 4096, (void*)params, 5, NULL);
 }
 
 // Handler estático para el test síncrono (evita crash en RISC-V por función anidada)

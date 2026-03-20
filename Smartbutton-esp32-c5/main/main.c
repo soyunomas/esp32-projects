@@ -4,6 +4,7 @@
 #include "app_web.h"
 #include "app_buttons.h"
 #include "app_led.h"
+#include "app_btn_leds.h"
 #include "app_dns.h"
 #include "app_http.h"
 #include "esp_netif.h"
@@ -75,6 +76,7 @@ void app_main(void) {
     app_set_state_callback(app_led_update_state);
     
     app_led_init();
+    app_btn_leds_init();
     app_buttons_init();
 
     nvs_wifi_config_t conf;
@@ -89,6 +91,13 @@ void app_main(void) {
 
     if (!configured) {
         app_set_state(STATE_NO_CONFIG);
+        for (int i = 0; i < 5; i++) {
+            app_btn_leds_on(1);
+            app_btn_leds_on(2);
+            vTaskDelay(pdMS_TO_TICKS(100));
+            app_btn_leds_off_all();
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
         app_wifi_start_ap();
         app_dns_start();
     } else {
@@ -119,6 +128,7 @@ void app_main(void) {
             if (is_deep_sleep_wake && detected_btn > 0 && !action_triggered) {
                 if (app_get_state() == STATE_NORMAL) { 
                     ESP_LOGI("MAIN", "WiFi OK. Ejecutando accion Boton %d", detected_btn);
+                    app_btn_leds_on(detected_btn);
                     app_buttons_simulate_press(detected_btn);
                     g_wakeup_btn = 0;
                     action_triggered = true;
@@ -155,8 +165,9 @@ void app_main(void) {
             if (ready_to_sleep) {
                 ESP_LOGI("MAIN", "Iniciando secuencia de Deep Sleep...");
                 
-                // 1. Apagar LED explícitamente
+                // 1. Apagar LEDs explícitamente
                 app_led_off();
+                app_btn_leds_off_all();
                 
                 // 2. RETARDO CRÍTICO: Dar tiempo al FreeRTOS para enviar el dato por el cable WS2812
                 vTaskDelay(pdMS_TO_TICKS(500)); 

@@ -2,6 +2,7 @@
 #include "app_core.h"
 #include "app_nvs.h"
 #include "app_dns.h"
+#include "app_btn_leds.h"
 #include "esp_wifi.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
@@ -30,11 +31,13 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         } else {
             // Fallback de seguridad vital: Si falla conectarse, garantizamos abrir el APSTA
             ESP_LOGW(TAG, "STA failed after %d retries, fallback to AP mode", s_max_retries);
+            app_btn_leds_wifi_result(false);
             app_wifi_switch_to_ap();
         }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         sta_retry_count = 0;
         ESP_LOGI(TAG, "WiFi Connected!");
+        app_btn_leds_wifi_result(true);
         xEventGroupSetBits(app_event_group, EVENT_WIFI_CONNECTED);
         app_set_state(STATE_NORMAL);
     }
@@ -79,6 +82,7 @@ void app_wifi_start_sta(void) {
     ESP_ERROR_CHECK(esp_wifi_start());
     esp_wifi_connect();
 
+    app_btn_leds_wifi_connecting_start();
     ESP_LOGI(TAG, "STA connecting to: %s", nvs_conf.ssid);
 }
 

@@ -11,6 +11,7 @@
 #include "mbedtls/base64.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
+#include "app_btn_leds.h"
 #include <string.h>
 
 static const char *TAG = "WEB";
@@ -209,9 +210,11 @@ static esp_err_t btn_post_handler(httpd_req_t *req) {
     cJSON *jtimeout = cJSON_GetObjectItem(root, "timeout");
     cJSON *jcooldown = cJSON_GetObjectItem(root, "cooldown");
     cJSON *jnocache = cJSON_GetObjectItem(root, "nocache");
+    cJSON *jname = cJSON_GetObjectItem(root, "name");
 
     if (cJSON_IsNumber(jid) && cJSON_IsString(jtarget)) {
         button_config_t cfg = {0};
+        if (cJSON_IsString(jname)) strlcpy(cfg.name, jname->valuestring, sizeof(cfg.name));
         cfg.action_type = cJSON_IsNumber(jatype) ? jatype->valueint : 0;
         strlcpy(cfg.target, jtarget->valuestring, sizeof(cfg.target));
         cfg.method = cJSON_IsNumber(jmethod) ? jmethod->valueint : 0;
@@ -256,6 +259,7 @@ static esp_err_t btn_get_handler(httpd_req_t *req) {
     cJSON *root = cJSON_CreateObject();
 
     if (app_nvs_get_button_config(btn_id, &cfg) == ESP_OK) {
+        cJSON_AddStringToObject(root, "name", cfg.name);
         cJSON_AddNumberToObject(root, "atype", cfg.action_type);
         cJSON_AddStringToObject(root, "target", cfg.target);
         cJSON_AddNumberToObject(root, "method", cfg.method);
@@ -306,6 +310,12 @@ static esp_err_t test_post_handler(httpd_req_t *req) {
     cJSON *jtimeout = cJSON_GetObjectItem(root, "timeout");
     cJSON *jnocache = cJSON_GetObjectItem(root, "nocache");
 
+    cJSON *jid = cJSON_GetObjectItem(root, "id");
+    int test_btn_id = cJSON_IsNumber(jid) ? jid->valueint : 0;
+    if (test_btn_id >= 1 && test_btn_id <= 2) {
+        app_btn_leds_on(test_btn_id);
+    }
+
     button_config_t cfg = {0};
     cfg.action_type = cJSON_IsNumber(jatype) ? jatype->valueint : 0;
     if (cJSON_IsString(jtarget)) strlcpy(cfg.target, jtarget->valuestring, sizeof(cfg.target));
@@ -334,6 +344,10 @@ static esp_err_t test_post_handler(httpd_req_t *req) {
         // Necesitamos asegurar que app_http.c use 'target' en vez de 'url'.
         // Ver cambio en app_http.c
         status = app_http_test_sync(&cfg);
+    }
+
+    if (test_btn_id >= 1 && test_btn_id <= 2) {
+        app_btn_leds_off(test_btn_id);
     }
 
     cJSON *resp = cJSON_CreateObject();
