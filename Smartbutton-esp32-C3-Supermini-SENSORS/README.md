@@ -102,7 +102,7 @@ esptool.py --chip esp32c3 -b 460800 \
 
 ```bash
 git clone https://github.com/soyunomas/esp32-projects.git
-cd esp32-projects/Smartbutton-esp32-C3-Supermini
+cd esp32-projects/Smartbutton-esp32-C3-Supermini-SENSORS
 
 # Configurar entorno ESP-IDF (si no lo tienes en tu .bashrc/.zshrc)
 . $HOME/esp/esp-idf/export.sh
