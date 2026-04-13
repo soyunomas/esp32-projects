@@ -1,4 +1,4 @@
-# 📡 ESP32-C3 WiFi Repeater
+# 📡 ESP32-C3 WiFi Repeater con WPA2 Enterprise y Port Forwarding
 
 Repetidor WiFi completo basado en **ESP32-C3-SuperMini**. Se conecta a una red WiFi existente y crea un punto de acceso propio para extender la cobertura. Toda la configuración se realiza mediante una **interfaz web profesional** servida desde el propio dispositivo.
 
