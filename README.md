@@ -59,4 +59,4 @@ Todos los proyectos incluyen las siguientes capacidades de serie:
 *   **Seguridad:** Acceso al panel web protegido por credenciales configurables.
 
 ---
-*Desarrollado con ❤️ por [soyunomas]. Licencia MIT.*
+*Desarrollado con Licencia MIT.*
