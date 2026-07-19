@@ -27,7 +27,11 @@ static int wifi_retry_count;
 static void set_motion_led(bool enabled)
 {
 #if CONFIG_MOTION_LED_GPIO >= 0
-    const int level = CONFIG_MOTION_LED_ACTIVE_LOW ? !enabled : enabled;
+#if CONFIG_MOTION_LED_ACTIVE_LOW
+    const int level = !enabled;
+#else
+    const int level = enabled;
+#endif
     gpio_set_level((gpio_num_t)CONFIG_MOTION_LED_GPIO, level);
 #else
     (void)enabled;
