@@ -21,6 +21,19 @@ jobs:
         run: cmake --build build-host --parallel
       - name: Test
         run: ctest --test-dir build-host --output-on-failure
+      - name: Configure sanitizers
+        run: >-
+          cmake -S WiFi-Motion-RSSI-C3-Supermini/tests/host
+          -B build-sanitize
+          -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+      - name: Build sanitizers
+        run: cmake --build build-sanitize --parallel
+      - name: Test sanitizers
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: ctest --test-dir build-sanitize --output-on-failure
 
   firmware-build:
     runs-on: ubuntu-latest
