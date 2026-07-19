@@ -17,6 +17,10 @@ Esta decisión se apoya en los siguientes resultados:
 
 Por tanto, RSSI será un baseline medido y documentado, no el objetivo final de prestaciones.
 
+## Línea alternativa de investigación matemática
+
+El archivo [PLAN_ALTERNATIVO_PROCESADO_SENAL.md](PLAN_ALTERNATIVO_PROCESADO_SENAL.md) define una comparación A/B frente al detector inicial mediante derivadas multiescala, Teager-Kaiser, CUSUM, entropía ordinal, análisis de subespacios y Matrix Profile. Esta línea solo se adoptará si demuestra una mejora reproducible en sesiones no vistas y dentro de los límites del ESP32-C3.
+
 ## Fase 0 — Base reproducible (completada)
 
 - ESP-IDF fijado a `v6.0.2`, objetivo `esp32c3`.
