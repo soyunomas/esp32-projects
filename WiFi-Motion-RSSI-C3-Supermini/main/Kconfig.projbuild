@@ -1,0 +1,69 @@
+menu "WiFi motion detector"
+
+config MOTION_WIFI_SSID
+    string "WiFi SSID"
+    default ""
+    help
+        Bootstrap SSID. Runtime provisioning is planned for phase 2.
+
+config MOTION_WIFI_PASSWORD
+    string "WiFi password"
+    default ""
+
+config MOTION_SAMPLE_INTERVAL_MS
+    int "RSSI sampling interval (ms)"
+    range 50 5000
+    default 100
+
+config MOTION_WINDOW_SIZE
+    int "Activity window (samples)"
+    range 4 128
+    default 20
+
+config MOTION_CALIBRATION_SAMPLES
+    int "Calibration scores"
+    range 10 10000
+    default 120
+
+config MOTION_SIGMA_MULTIPLIER_X100
+    int "Threshold sigma multiplier x100"
+    range 100 1200
+    default 600
+
+config MOTION_MIN_THRESHOLD_X100
+    int "Minimum activity threshold x100"
+    range 1 1000
+    default 30
+
+config MOTION_TRIGGER_CONSECUTIVE
+    int "Consecutive scores to trigger"
+    range 1 100
+    default 3
+
+config MOTION_CLEAR_CONSECUTIVE
+    int "Consecutive scores to clear"
+    range 1 100
+    default 8
+
+config MOTION_LED_GPIO
+    int "Status LED GPIO (-1 disables)"
+    range -1 21
+    default 8
+
+config MOTION_LED_ACTIVE_LOW
+    bool "Status LED is active-low"
+    default y
+
+choice MOTION_OUTPUT_FORMAT
+    prompt "Serial output format"
+    default MOTION_OUTPUT_CSV
+
+config MOTION_OUTPUT_CSV
+    bool "CSV"
+
+config MOTION_OUTPUT_JSON
+    bool "JSON lines"
+
+endchoice
+
+endmenu
