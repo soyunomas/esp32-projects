@@ -33,6 +33,7 @@ Nodos inteligentes configurables para control de escenas y automatización media
 | [**Smartbutton-C3-Plus-5**](./Smartbutton-esp32-C3-Supermini-Plus-5) | 5 Botones | LED RGB WS2812 | Paneles de control de múltiples escenas. |
 | [**Smartbutton-C3-SENSORS**](./Smartbutton-esp32-C3-Supermini-SENSORS) | 3 Entradas | LED Azul Onboard | Sensores de movimiento (**PIR, Radar**) y botones. |
 | [**Smartbutton-C3-Supermini**](./Smartbutton-esp32-C3-Supermini) | 2 Botones | LED Azul Onboard | Control simple en formato miniatura (~2€). |
+| [**WiFi-Motion-RSSI-C3-Supermini**](./WiFi-Motion-RSSI-C3-Supermini) | RSSI + CSI WiFi | Web móvil bilingüe, LED y Telegram | Detección de movimiento sin cámara, micrófono ni sensor externo. |
 
 ### Serie ESP32-C5 (WiFi 6 & Dual-Band)
 | Proyecto | Protocolos | Feedback Visual | Ventaja Clave |
@@ -57,6 +58,7 @@ Nodos inteligentes configurables para control de escenas y automatización media
 ### 4. ¿Botón mecánico o Sensor de Presencia?
 *   **Plus-5 / Supermini:** Diseñados para interacción humana directa. El modelo **Plus-5** destaca por su **LED RGB** que cambia de color según el estado (conectando, éxito, error).
 *   **SENSORS:** Diseñado para automatización invisible. Incluye lógica de **estabilización** (evita falsos positivos al encender el sensor) y **cooldown** (tiempo de espera entre detecciones).
+*   **WiFi-Motion-RSSI-C3-Supermini:** Detecta perturbaciones mediante **RSSI, CSI o ambas fuentes**, ofrece gráfica en tiempo real, calibración programable, avisos por Telegram y recuperación mediante portal cautivo. Detecta cambios compatibles con movimiento, no presencia estática certificada.
 
 ---
 
@@ -70,4 +72,5 @@ Todos los firmwares comparten una base técnica de nivel industrial:
 *   **Seguridad:** Panel de administración protegido por credenciales configurables.
 
 ---
+
 *Mantenido por [soyunomas]. Todos los proyectos bajo licencia MIT.*
