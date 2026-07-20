@@ -1,0 +1,37 @@
+{
+  "available_splits": [
+    "tuning"
+  ],
+  "experiment_schema": 1,
+  "metrics": {
+    "activation_latency_median_ms": null,
+    "baseline_idle_range": 0.028,
+    "baseline_idle_stddev": 0.008384411149604792,
+    "confusion_samples": {
+      "false_negative": 0,
+      "false_positive": 0,
+      "true_negative": 473,
+      "true_positive": 0
+    },
+    "detected_events": 0,
+    "event_recall": null,
+    "events": 0,
+    "false_activations": 0,
+    "false_positives_per_hour": 0.0,
+    "idle_duration_hours": 0.025805555555555557,
+    "objectives": {
+      "activation_latency_median_ms_max": 1000,
+      "eligible": false,
+      "event_recall_min": 0.9,
+      "false_positives_per_hour_max": 1.0,
+      "met": false
+    },
+    "release_latency_median_ms": null,
+    "repeated_samples_percent": 99.78858350951374,
+    "sample_f1": null,
+    "sample_precision": null,
+    "sample_recall": null,
+    "sessions": 1
+  },
+  "selected_split": "tuning"
+}

@@ -1,0 +1,30 @@
+{
+  "contains_personal_data": false,
+  "invalid_reason": "operator confirmed that the scheduled physical crossing was not performed",
+  "usable_for_metrics": false,
+  "events": [
+    {
+      "end_ms": 21000,
+      "id": "cross-1",
+      "start_ms": 15000
+    }
+  ],
+  "experiment_schema": 1,
+  "geometry": {
+    "ap_sensor_distance_m": 1.3,
+    "orientation": "no_especificada",
+    "placement": "casi-en-medio-habitacion",
+    "sensor_height_m": 1.2
+  },
+  "rssi_sha256": "6ef3f265c3573607fc85ec7e83a668f13c5a3d372e1700d8b68f269faa90a5dc",
+  "samples": 472,
+  "scenario": "link_crossing",
+  "session_id": "8310d694-2136-4b25-b1f8-df63024e39c0",
+  "source": {
+    "baud": 115200,
+    "event_clock": "host_monotonic",
+    "port": "/dev/ttyACM0"
+  },
+  "split": "tuning",
+  "successful_samples": 472
+}

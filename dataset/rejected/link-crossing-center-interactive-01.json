@@ -1,0 +1,24 @@
+{
+  "contains_personal_data": false,
+  "invalid_reason": "capture expired before the operator response and was started without a writable PTY",
+  "usable_for_metrics": false,
+  "events": [],
+  "experiment_schema": 1,
+  "geometry": {
+    "ap_sensor_distance_m": 1.3,
+    "orientation": "no_especificada",
+    "placement": "casi-en-medio-habitacion",
+    "sensor_height_m": 1.2
+  },
+  "rssi_sha256": "59e302f4d2b2615534e43b937419ab834ad98edc4ecdb67258d88aa7bac105c3",
+  "samples": 1824,
+  "scenario": "link_crossing",
+  "session_id": "92b159ca-13af-4dd2-8f0f-aafe686d5118",
+  "source": {
+    "baud": 115200,
+    "event_clock": "host_monotonic",
+    "port": "/dev/ttyACM0"
+  },
+  "split": "tuning",
+  "successful_samples": 1824
+}

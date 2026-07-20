@@ -1,0 +1,1056 @@
+{
+  "combinations": [
+    {
+      "algorithm": "mean_absolute_difference",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.0557764138,
+        "baseline_idle_stddev": 0.015472269841421837,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "low"
+    },
+    {
+      "algorithm": "mean_absolute_difference",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.06799604779999999,
+        "baseline_idle_stddev": 0.016939417161998212,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "low"
+    },
+    {
+      "algorithm": "standard_deviation",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.304767251,
+        "baseline_idle_stddev": 0.081824176107114,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "low"
+    },
+    {
+      "algorithm": "standard_deviation",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.476642311,
+        "baseline_idle_stddev": 0.12510108155600722,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "low"
+    },
+    {
+      "algorithm": "sample_variance",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.407340556,
+        "baseline_idle_stddev": 0.11587930771978298,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "low"
+    },
+    {
+      "algorithm": "sample_variance",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.40368208299999997,
+        "baseline_idle_stddev": 0.11136928636596359,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "low"
+    },
+    {
+      "algorithm": "range",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.816114661,
+        "baseline_idle_stddev": 0.21700833338733308,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "low"
+    },
+    {
+      "algorithm": "range",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 1.2955763370000002,
+        "baseline_idle_stddev": 0.32868303490196377,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "low"
+    },
+    {
+      "algorithm": "median_absolute_deviation",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.0571911112,
+        "baseline_idle_stddev": 0.017297072404939585,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "low"
+    },
+    {
+      "algorithm": "median_absolute_deviation",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.0,
+        "baseline_idle_stddev": 0.0,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "low"
+    },
+    {
+      "algorithm": "mean_absolute_difference",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.0557764138,
+        "baseline_idle_stddev": 0.015472269841421837,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "balanced"
+    },
+    {
+      "algorithm": "mean_absolute_difference",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.06799604779999999,
+        "baseline_idle_stddev": 0.016939417161998212,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "balanced"
+    },
+    {
+      "algorithm": "standard_deviation",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.304767251,
+        "baseline_idle_stddev": 0.081824176107114,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "balanced"
+    },
+    {
+      "algorithm": "standard_deviation",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.476642311,
+        "baseline_idle_stddev": 0.12510108155600722,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "balanced"
+    },
+    {
+      "algorithm": "sample_variance",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.407340556,
+        "baseline_idle_stddev": 0.11597893137554317,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "balanced"
+    },
+    {
+      "algorithm": "sample_variance",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.40368208299999997,
+        "baseline_idle_stddev": 0.11155901086329968,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "balanced"
+    },
+    {
+      "algorithm": "range",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.816114661,
+        "baseline_idle_stddev": 0.21700833338733308,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "balanced"
+    },
+    {
+      "algorithm": "range",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 1.2955763370000002,
+        "baseline_idle_stddev": 0.32868303490196377,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "balanced"
+    },
+    {
+      "algorithm": "median_absolute_deviation",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.08971778397,
+        "baseline_idle_stddev": 0.025852340130072416,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "balanced"
+    },
+    {
+      "algorithm": "median_absolute_deviation",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.0,
+        "baseline_idle_stddev": 0.0,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "balanced"
+    },
+    {
+      "algorithm": "mean_absolute_difference",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.0809517018,
+        "baseline_idle_stddev": 0.021083487413847777,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "high"
+    },
+    {
+      "algorithm": "mean_absolute_difference",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.1013906653,
+        "baseline_idle_stddev": 0.0260756797681319,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "high"
+    },
+    {
+      "algorithm": "standard_deviation",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.4582109449999999,
+        "baseline_idle_stddev": 0.12743530011027568,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "high"
+    },
+    {
+      "algorithm": "standard_deviation",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.683677479,
+        "baseline_idle_stddev": 0.23330781625814803,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "high"
+    },
+    {
+      "algorithm": "sample_variance",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.5470232370000001,
+        "baseline_idle_stddev": 0.14850673497586891,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "high"
+    },
+    {
+      "algorithm": "sample_variance",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.6048692541,
+        "baseline_idle_stddev": 0.1979870475346159,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "high"
+    },
+    {
+      "algorithm": "range",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 1.2180206789999999,
+        "baseline_idle_stddev": 0.3398005248510651,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "high"
+    },
+    {
+      "algorithm": "range",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 2.12163533,
+        "baseline_idle_stddev": 0.8128923295709113,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "high"
+    },
+    {
+      "algorithm": "median_absolute_deviation",
+      "baseline_mode": "mean_stddev",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.102675280526,
+        "baseline_idle_stddev": 0.03094041116673035,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "high"
+    },
+    {
+      "algorithm": "median_absolute_deviation",
+      "baseline_mode": "median_mad",
+      "metrics": {
+        "activation_latency_median_ms": null,
+        "baseline_idle_range": 0.0,
+        "baseline_idle_stddev": 0.0,
+        "confusion_samples": {
+          "false_negative": 60,
+          "false_positive": 0,
+          "true_negative": 412,
+          "true_positive": 0
+        },
+        "detected_events": 0,
+        "event_recall": 0.0,
+        "events": 1,
+        "false_activations": 0,
+        "false_positives_per_hour": 0.0,
+        "idle_duration_hours": 0.010809444444444444,
+        "objectives": {
+          "activation_latency_median_ms_max": 1000,
+          "eligible": false,
+          "event_recall_min": 0.9,
+          "false_positives_per_hour_max": 1.0,
+          "met": false
+        },
+        "release_latency_median_ms": null,
+        "repeated_samples_percent": 95.55084745762711,
+        "sample_f1": null,
+        "sample_precision": null,
+        "sample_recall": 0.0,
+        "sessions": 1
+      },
+      "profile": "high"
+    }
+  ],
+  "experiment_schema": 1,
+  "selected_split": "tuning"
+}

@@ -1,0 +1,28 @@
+{
+  "contains_personal_data": false,
+  "events": [
+    {
+      "end_ms": 38000,
+      "id": "cross-1",
+      "start_ms": 28000
+    }
+  ],
+  "experiment_schema": 1,
+  "geometry": {
+    "ap_sensor_distance_m": 1.3,
+    "orientation": "no_especificada",
+    "placement": "casi-en-medio-habitacion",
+    "sensor_height_m": 1.2
+  },
+  "rssi_sha256": "d3416f318b321c34e0098106a785b87fe50f6972496600ab211670a502502098",
+  "samples": 623,
+  "scenario": "link_crossing",
+  "session_id": "791653dd-b5e7-4083-82dd-6d42fe2034bc",
+  "source": {
+    "baud": 115200,
+    "event_clock": "host_monotonic",
+    "port": "/dev/ttyACM0"
+  },
+  "split": "tuning",
+  "successful_samples": 623
+}
