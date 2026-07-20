@@ -10,6 +10,8 @@ The project includes RSSI and CSI detection, adaptive calibration, a responsive
 English/Spanish web interface, live charts, Wi-Fi recovery, administrator
 authentication, Telegram notifications, and experimental telemetry.
 
+![WiFi Motion RSSI web interface](img/Screenshot1.png)
+
 > [!IMPORTANT]
 > This project detects **radio changes compatible with motion**, not people. It
 > does not identify or count occupants, cannot guarantee detection of a motionless

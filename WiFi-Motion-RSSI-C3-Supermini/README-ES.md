@@ -10,6 +10,8 @@ El proyecto incluye detector RSSI, captura CSI, calibración
 adaptativa, gráfica web, selección de red Wi-Fi, acceso de administrador,
 notificaciones por Telegram y telemetría para evaluar el comportamiento real.
 
+![Interfaz web de WiFi Motion RSSI](img/Screenshot1.png)
+
 > [!IMPORTANT]
 > Este proyecto detecta **cambios compatibles con movimiento**, no personas.
 > No identifica a nadie, no cuenta ocupantes y no garantiza detectar a una
