@@ -1,0 +1,18 @@
+Project: WiFi Motion RSSI for 01Space ESP32-C3 0.42 OLED
+Build date: 2026-07-29
+Target: esp32c3
+Flash size: 4 MB
+Flash mode: DIO
+Flash frequency: 80 MHz
+ESP-IDF: v6.1-dev-2938-g12f36a021f
+Application size: 1146192 bytes
+Combined image size: 1211728 bytes
+
+Separate image offsets:
+  0x000000  bootloader.bin
+  0x008000  partition-table.bin
+  0x010000  wifi-motion-rssi-c3-oled-042.bin
+
+Runtime configuration is stored in NVS at 0x009000.
+The separate-image flash procedure preserves NVS.
+The combined factory image overwrites NVS with erased bytes.

@@ -1,5 +1,8 @@
 # Prebuilt firmware
 
+These files are regenerated automatically after every successful
+`./tools/build.sh`.
+
 [Main README](../README.md) | [Instrucciones en español](../README-ES.md)
 
 These binaries target an **ESP32-C3 SuperMini with 4 MB flash** and were built
@@ -90,4 +93,3 @@ sha256sum -c SHA256SUMS
 3. Hold BOOT, tap RESET, release RESET, then release BOOT.
 4. Run the flash command again.
 5. If necessary, reduce `BAUD`, for example `BAUD=115200`.
-

@@ -314,6 +314,11 @@ The main card reports calibrating, idle, motion detected, or read error. The
 browser chart retains about two minutes and can independently show or hide RSSI
 score, RSSI threshold, CSI score, CSI threshold, and RSSI/CSI detection markers.
 
+The series use both color and line pattern so they remain easy to distinguish:
+RSSI score is solid blue, its threshold is dashed orange, CSI score is
+long-dashed green, and its threshold is dotted magenta. RSSI detection markers
+are solid vermilion, while CSI markers are dashed near-black.
+
 A marker represents a transition from idle to motion, not every sample while
 motion remains active. The `?` buttons explain each series. Chart history is not
 persistent and is cleared when the page reloads; serial telemetry is the correct
@@ -478,7 +483,9 @@ The **WiFi motion detector** menu controls bootstrap Wi-Fi credentials, recovery
 AP password, LED and button GPIOs, CSI, controlled traffic, and telemetry format.
 Runtime settings can later be changed from the portal.
 
-Build outputs are created under `build/`. To flash and open the monitor:
+Build outputs are created under `build/`. Every successful `./tools/build.sh`
+also regenerates the ready-to-flash binaries, checksums, and build information
+under [`firmware/`](firmware/). To flash and open the monitor:
 
 ```bash
 PORT=/dev/ttyACM0 ./tools/flash.sh

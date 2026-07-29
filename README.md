@@ -28,14 +28,23 @@ Sistemas avanzados para extender la cobertura inalámbrica con capacidades de en
 Nodos inteligentes configurables para control de escenas y automatización mediante disparadores HTTP, MQTT o WebSockets.
 
 ### Serie ESP32-C3 (Compactos y Eficientes)
+
 | Proyecto | Entradas | Feedback Visual | Uso Ideal |
 | :--- | :--- | :--- | :--- |
 | [**Smartbutton-C3-Plus-5**](./Smartbutton-esp32-C3-Supermini-Plus-5) | 5 Botones | LED RGB WS2812 | Paneles de control de múltiples escenas. |
 | [**Smartbutton-C3-SENSORS**](./Smartbutton-esp32-C3-Supermini-SENSORS) | 3 Entradas | LED Azul Onboard | Sensores de movimiento (**PIR, Radar**) y botones. |
 | [**Smartbutton-C3-Supermini**](./Smartbutton-esp32-C3-Supermini) | 2 Botones | LED Azul Onboard | Control simple en formato miniatura (~2€). |
 | [**WiFi-Motion-RSSI-C3-Supermini**](./WiFi-Motion-RSSI-C3-Supermini) | RSSI + CSI WiFi | Web móvil bilingüe, LED y Telegram | Detección de movimiento sin cámara, micrófono ni sensor externo. |
+| [**WiFi-Motion-RSSI-ESP32-C3-OLED-0.42**](./WiFi-Motion-RSSI-ESP32-C3-OLED-0.42) | RSSI + CSI WiFi | OLED 72×40, web bilingüe y Telegram | Variante para 01Space ESP32-C3 0.42 OLED; muestra IP, estado y scores en pantalla. |
+
+### Serie ESP32-S3
+
+| Proyecto | Hardware validado | Interfaz | Uso ideal |
+| :--- | :--- | :--- | :--- |
+| [**WiFi-Motion-RSSI-ESP32-S3**](./WiFi-Motion-RSSI-ESP32-S3) | ESP32-S3 rev. 0.2, flash 16 MB, PSRAM 8 MB, puente QinHeng USB Single Serial | RSSI + CSI, portal web bilingüe, Telegram y telemetría UART0 | Detección experimental de cambios compatibles con movimiento en placas ESP32-S3 convencionales. |
 
 ### Serie ESP32-C5 (WiFi 6 & Dual-Band)
+
 | Proyecto | Protocolos | Feedback Visual | Ventaja Clave |
 | :--- | :--- | :--- | :--- |
 | [**Smartbutton-C5-ws**](./Smartbutton-esp32-c5-ws) | HTTP, MQTT, **WebSockets** | LED RGB + 2 LEDs | Latencia mínima y bandas 2.4/5GHz. |
@@ -59,6 +68,8 @@ Nodos inteligentes configurables para control de escenas y automatización media
 *   **Plus-5 / Supermini:** Diseñados para interacción humana directa. El modelo **Plus-5** destaca por su **LED RGB** que cambia de color según el estado (conectando, éxito, error).
 *   **SENSORS:** Diseñado para automatización invisible. Incluye lógica de **estabilización** (evita falsos positivos al encender el sensor) y **cooldown** (tiempo de espera entre detecciones).
 *   **WiFi-Motion-RSSI-C3-Supermini:** Detecta perturbaciones mediante **RSSI, CSI o ambas fuentes**, ofrece gráfica en tiempo real, calibración programable, avisos por Telegram y recuperación mediante portal cautivo. Detecta cambios compatibles con movimiento, no presencia estática certificada.
+*   **WiFi-Motion-RSSI-ESP32-C3-OLED-0.42:** Añade una OLED SSD1306 de 72×40 conectada a GPIO5/GPIO6 para ver IP, calibración, movimiento, RSSI y scores sin abrir el portal web.
+*   **WiFi-Motion-RSSI-ESP32-S3:** Variante para placas ESP32-S3 con USB-UART. Usa UART0 para consola y telemetría, GPIO0 para BOOT/recuperación y desactiva el LED por defecto para no asumir el pin ni el tipo de LED de cada placa. Ha sido compilada, grabada y probada con CSI activo y portal HTTP estable.
 
 ---
 
