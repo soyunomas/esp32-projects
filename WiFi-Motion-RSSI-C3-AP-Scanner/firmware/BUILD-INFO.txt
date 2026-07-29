@@ -1,0 +1,12 @@
+Project: WiFi-Motion-RSSI-C3-AP-Scanner
+Target: esp32c3
+ESP-IDF commit: 12f36a021f511cd4de41d3fffff146c5336ac1e7
+ESP-IDF describe: v6.1-dev-2938-g12f36a021f
+Scan mode: passive
+Channel plan: selected (1,6)
+Calibration scans: 40
+Reference selection: automatic
+Reference persistence: NVS reference schema v1; config schema v2 with CRC32
+Detector minimum score thresholds x100: 250/125
+Detector adaptive threshold: sigma x100 400; quiet window 32
+Schema: wifi_ap_scan/v1

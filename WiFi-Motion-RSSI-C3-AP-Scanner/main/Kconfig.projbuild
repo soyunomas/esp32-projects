@@ -1,0 +1,212 @@
+menu "WiFi AP scan probe"
+
+config PROBE_SCAN_PASSIVE
+    bool "Use passive scans"
+    default y
+    help
+        Listen for beacons without transmitting probe requests. Disable this
+        option only for the controlled active-scan comparison experiment.
+
+config PROBE_PASSIVE_DWELL_MS
+    int "Passive dwell time per channel (ms)"
+    range 20 1500
+    default 120
+    depends on PROBE_SCAN_PASSIVE
+
+config PROBE_ACTIVE_MIN_DWELL_MS
+    int "Active minimum dwell time per channel (ms)"
+    range 0 1500
+    default 0
+    depends on !PROBE_SCAN_PASSIVE
+
+config PROBE_ACTIVE_MAX_DWELL_MS
+    int "Active maximum dwell time per channel (ms)"
+    range 20 1500
+    default 120
+    depends on !PROBE_SCAN_PASSIVE
+
+config PROBE_INTER_SCAN_DELAY_MS
+    int "Delay after each completed scan (ms)"
+    range 0 60000
+    default 500
+
+config PROBE_SCAN_TIMEOUT_MS
+    int "Scan completion timeout (ms)"
+    range 1000 120000
+    default 30000
+
+config PROBE_LIMIT_CHANNELS
+    bool "Scan only the two calibrated reference channels"
+    default y
+    help
+        Scan channels 1 and 6 as one logical cycle. Disable to scan all
+        channels. This is the controlled limited-channel phase-1 variant.
+
+config PROBE_REFERENCE_CHANNEL_1
+    int "First reference channel"
+    range 1 14
+    default 1
+    depends on PROBE_LIMIT_CHANNELS
+
+config PROBE_REFERENCE_CHANNEL_2
+    int "Second reference channel"
+    range 1 14
+    default 6
+    depends on PROBE_LIMIT_CHANNELS
+
+config PROBE_CALIBRATION_SCANS
+    int "Full-channel scans used for reference calibration"
+    range 5 128
+    default 40
+
+config PROBE_FORCE_RECALIBRATION
+    bool "Ignore and replace persisted reference calibration at boot"
+    default n
+    help
+        Enable for a build that always performs a new full-channel
+        calibration. A factory flash also clears the saved references.
+
+config PROBE_MANUAL_SSID_1
+    string "First manually selected SSID (empty enables auto mode)"
+    default ""
+
+config PROBE_MANUAL_SSID_2
+    string "Second manually selected SSID"
+    default ""
+
+config PROBE_SELECTOR_MINIMUM_SAMPLES
+    int "Minimum stored samples per reference"
+    range 1 128
+    default 20
+
+config PROBE_SELECTOR_MINIMUM_PRESENCE_PERCENT
+    int "Minimum reference presence (percent)"
+    range 1 100
+    default 80
+
+config PROBE_SELECTOR_MINIMUM_RSSI_DBM
+    int "Minimum median RSSI (dBm)"
+    range -120 -20
+    default -90
+
+config PROBE_SELECTOR_MAXIMUM_MAD_DB
+    int "Maximum reference MAD (dB)"
+    range 0 30
+    default 6
+
+config PROBE_SELECTOR_MAXIMUM_REFERENCES
+    int "Maximum automatically selected references"
+    range 1 8
+    default 4
+
+config PROBE_DETECTOR_MINIMUM_COVERAGE_PERCENT
+    int "Minimum reference coverage for motion scoring (percent)"
+    range 1 100
+    default 60
+
+config PROBE_DETECTOR_NOISE_FLOOR_DB_X10
+    int "Minimum RSSI noise scale (dB x10)"
+    range 1 300
+    default 20
+
+config PROBE_DETECTOR_TRIGGER_SCORE_X100
+    int "Motion trigger normalized score x100"
+    range 1 10000
+    default 250
+
+config PROBE_DETECTOR_RELEASE_SCORE_X100
+    int "Motion release normalized score x100"
+    range 0 9999
+    default 125
+
+config PROBE_DETECTOR_ADAPTIVE_SIGMA_X100
+    int "Adaptive score threshold sigma multiplier x100"
+    range 100 1200
+    default 400
+
+config PROBE_DETECTOR_ADAPTIVE_WINDOW
+    int "Quiet score samples used by adaptive threshold"
+    range 3 32
+    default 32
+
+config PROBE_DETECTOR_BASELINE_ALPHA_PERMILLE
+    int "Safe idle baseline adaptation alpha (permille)"
+    range 0 1000
+    default 5
+
+config PROBE_DETECTOR_WARMUP_SCANS
+    int "Healthy scans before detector becomes idle"
+    range 1 255
+    default 5
+
+config PROBE_DETECTOR_TRIGGER_CONSECUTIVE
+    int "Consecutive high scores required for motion"
+    range 1 255
+    default 2
+
+config PROBE_DETECTOR_CLEAR_CONSECUTIVE
+    int "Consecutive low scores required to clear motion"
+    range 1 255
+    default 5
+
+config PROBE_DETECTOR_UNHEALTHY_CONSECUTIVE
+    int "Consecutive unhealthy scans before degraded/no-data"
+    range 1 255
+    default 2
+
+config PROBE_DETECTOR_RECOVERY_CONSECUTIVE
+    int "Consecutive healthy scans required before warmup"
+    range 1 255
+    default 3
+
+config PROBE_DETECTOR_STALE_AFTER_SCANS
+    int "Missing scans before a reference is reported stale"
+    range 1 255
+    default 3
+
+config PROBE_MAX_AP_RECORDS
+    int "Maximum AP records emitted per scan"
+    range 1 128
+    default 64
+
+config PROBE_MARKER_GPIO
+    int "GPIO for experiment marker button"
+    range -1 21
+    default 9
+    help
+        GPIO 9 is BOOT on the common ESP32-C3 SuperMini. Set -1 to disable.
+
+config PROBE_MARKER_DEBOUNCE_MS
+    int "Marker button debounce interval (ms)"
+    range 20 2000
+    default 250
+    depends on PROBE_MARKER_GPIO >= 0
+
+config PROBE_STATUS_LED_GPIO
+    int "GPIO for local detector status LED"
+    range -1 21
+    default 8
+    help
+        GPIO 8 drives the LED on the common ESP32-C3 SuperMini. Set -1 to
+        disable local indication.
+
+config PROBE_STATUS_LED_ACTIVE_LOW
+    bool "Status LED is active low"
+    default y
+    depends on PROBE_STATUS_LED_GPIO >= 0
+
+config PROBE_PORTAL_LONG_PRESS_MS
+    int "BOOT hold time to start maintenance portal (ms)"
+    range 1000 10000
+    default 3000
+    depends on PROBE_MARKER_GPIO >= 0
+
+config PROBE_PORTAL_AP_SSID
+    string "Maintenance access point SSID"
+    default "Motion-C3-Setup"
+
+config PROBE_PORTAL_AP_PASSWORD
+    string "Maintenance access point password"
+    default "motion-c3-setup"
+
+endmenu

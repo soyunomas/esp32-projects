@@ -1,0 +1,7 @@
+build/
+sdkconfig
+sdkconfig.old
+tests/host/build-host/
+__pycache__/
+*.pyc
+capturas/

@@ -35,6 +35,7 @@ Nodos inteligentes configurables para control de escenas y automatización media
 | [**Smartbutton-C3-SENSORS**](./Smartbutton-esp32-C3-Supermini-SENSORS) | 3 Entradas | LED Azul Onboard | Sensores de movimiento (**PIR, Radar**) y botones. |
 | [**Smartbutton-C3-Supermini**](./Smartbutton-esp32-C3-Supermini) | 2 Botones | LED Azul Onboard | Control simple en formato miniatura (~2€). |
 | [**WiFi-Motion-RSSI-C3-Supermini**](./WiFi-Motion-RSSI-C3-Supermini) | RSSI + CSI WiFi | Web móvil bilingüe, LED y Telegram | Detección de movimiento sin cámara, micrófono ni sensor externo. |
+| [**WiFi-Motion-RSSI-C3-AP-Scanner**](./WiFi-Motion-RSSI-C3-AP-Scanner) | RSSI de varios AP, sin asociarse | Portal cautivo, gráfica y umbral adaptativo | Detector experimental autónomo que elige redes cercanas sin conocer sus claves. |
 | [**WiFi-Motion-RSSI-ESP32-C3-OLED-0.42**](./WiFi-Motion-RSSI-ESP32-C3-OLED-0.42) | RSSI + CSI WiFi | OLED 72×40, web bilingüe y Telegram | Variante para 01Space ESP32-C3 0.42 OLED; muestra IP, estado y scores en pantalla. |
 
 ### Serie ESP32-S3
@@ -68,19 +69,21 @@ Nodos inteligentes configurables para control de escenas y automatización media
 *   **Plus-5 / Supermini:** Diseñados para interacción humana directa. El modelo **Plus-5** destaca por su **LED RGB** que cambia de color según el estado (conectando, éxito, error).
 *   **SENSORS:** Diseñado para automatización invisible. Incluye lógica de **estabilización** (evita falsos positivos al encender el sensor) y **cooldown** (tiempo de espera entre detecciones).
 *   **WiFi-Motion-RSSI-C3-Supermini:** Detecta perturbaciones mediante **RSSI, CSI o ambas fuentes**, ofrece gráfica en tiempo real, calibración programable, avisos por Telegram y recuperación mediante portal cautivo. Detecta cambios compatibles con movimiento, no presencia estática certificada.
+*   **WiFi-Motion-RSSI-C3-AP-Scanner:** No se conecta al router ni necesita las claves de los AP observados. Mantiene su propia red local, permite elegir hasta ocho SSID, aprende referencias por BSSID y usa un umbral adaptativo. Incluye binarios USB en `firmware/`, pero no Telegram ni OTA.
 *   **WiFi-Motion-RSSI-ESP32-C3-OLED-0.42:** Añade una OLED SSD1306 de 72×40 conectada a GPIO5/GPIO6 para ver IP, calibración, movimiento, RSSI y scores sin abrir el portal web.
 *   **WiFi-Motion-RSSI-ESP32-S3:** Variante para placas ESP32-S3 con USB-UART. Usa UART0 para consola y telemetría, GPIO0 para BOOT/recuperación y desactiva el LED por defecto para no asumir el pin ni el tipo de LED de cada placa. Ha sido compilada, grabada y probada con CSI activo y portal HTTP estable.
 
 ---
 
-## 📋 Estándares del Repositorio
+## 📋 Convenciones del repositorio
 
-Todos los firmwares comparten una base técnica de nivel industrial:
-*   **Provisionamiento:** Todos incluyen **Portal Cautivo**. El dispositivo crea su propia red WiFi para que lo configures desde el móvil sin tocar el código.
-*   **Persistencia:** Configuración guardada en **NVS** (memoria no volátil).
-*   **Actualizaciones:** Soporte **Dual OTA** (Over-The-Air) para actualizar el firmware desde la web de forma segura.
-*   **Energía:** Gestión de **Deep Sleep** en todos los Smartbuttons para funcionamiento prolongado con baterías.
-*   **Seguridad:** Panel de administración protegido por credenciales configurables.
+Las funciones dependen de cada proyecto y deben comprobarse en su README:
+
+*   **Provisionamiento:** Los repetidores y detectores con panel web ofrecen portal cautivo o una red local de configuración.
+*   **Persistencia:** Los proyectos que guardan configuración utilizan NVS y documentan qué conserva cada tipo de flasheo.
+*   **Actualizaciones:** Algunos firmwares incluyen OTA; otros, como **WiFi-Motion-RSSI-C3-AP-Scanner**, se actualizan por USB desde su carpeta `firmware/`.
+*   **Energía:** Deep Sleep se utiliza en los Smartbuttons cuando está documentado; los detectores Wi-Fi permanecen activos para medir.
+*   **Seguridad:** Los paneles que requieren autenticación documentan sus credenciales iniciales y permiten cambiarlas.
 
 ---
 
