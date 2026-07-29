@@ -31,6 +31,7 @@ authentication, Telegram notifications, and experimental telemetry.
 - [First boot and web portal](#first-boot-and-web-portal)
 - [Telegram notifications](#telegram-notifications)
 - [Security](#security)
+- [Prebuilt firmware](#prebuilt-firmware)
 - [Build and flash from source](#build-and-flash-from-source)
 - [Host tests](#host-tests)
 - [Local API](#local-api)
@@ -443,6 +444,26 @@ Current limits are an 8-second network timeout, a six-message queue, and a
 The local portal uses HTTP, not HTTPS. Use a trusted LAN, change the default
 password, do not forward port 80, and never expose the ESP32 directly to the
 Internet.
+
+## Prebuilt firmware
+
+The [`firmware/`](firmware/) directory contains binaries for ESP32-S3 boards
+with at least 4 MB flash. The simplest Linux command is:
+
+```bash
+python3 -m pip install --user esptool
+PORT=/dev/ttyACM0 ./firmware/flash-prebuilt.sh
+```
+
+The recommended script writes `bootloader.bin`, `partition-table.bin`, and the
+application separately, preserving NVS and existing runtime configuration.
+`flash-factory.sh` writes the combined image for a clean installation and
+deliberately erases saved Wi-Fi, administrator, detector, and Telegram data.
+See [`firmware/README.md`](firmware/README.md) for offsets, checksums, Windows
+and macOS commands, and recovery guidance.
+
+The packaged firmware contains project defaults. It does not contain the
+development network SSID/password or a Telegram token.
 
 ## Build and flash from source
 

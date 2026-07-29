@@ -651,6 +651,10 @@ En `menuconfig`, la sección **WiFi motion detector** permite definir credencial
 de arranque, botón de eventos, CSI, tráfico controlado y formato de telemetría.
 Los GPIO de la OLED son fijos porque forman parte del cableado de la placa.
 
+Los resultados de compilación se crean en `build/`. Cada ejecución correcta de
+`./tools/build.sh` también regenera en [`firmware/`](firmware/) los binarios
+listos para flashear, sus sumas SHA-256 y la información de compilación.
+
 ### Instalar y monitorizar
 
 ```bash

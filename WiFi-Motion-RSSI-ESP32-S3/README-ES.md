@@ -409,6 +409,11 @@ ocultar:
 Un hito marca una transición de reposo a movimiento, no cada muestra mientras
 el estado continúa activo. Los botones `?` explican cada serie.
 
+Las series se diferencian mediante color y patrón: score RSSI azul continuo,
+umbral RSSI naranja discontinuo, score CSI verde con raya larga y umbral CSI
+magenta punteado. Los hitos RSSI son bermellón continuo y los CSI negro
+discontinuo.
+
 La gráfica del navegador es una visualización en vivo: al recargar la página se
 reinicia su historial. La telemetría serie es la vía adecuada para conservar una
 sesión experimental completa.
@@ -561,6 +566,27 @@ tráfico de la red local podría intentar capturar credenciales o sesión. Usa u
 red confiable, cambia `admin`, no abras el puerto 80 en el router y no sitúes el
 ESP32 directamente en Internet.
 
+## Firmware precompilado
+
+La carpeta [`firmware/`](firmware/) contiene binarios para placas ESP32-S3 con
+al menos 4 MB de flash. La forma más sencilla desde Linux es:
+
+```bash
+python3 -m pip install --user esptool
+PORT=/dev/ttyACM0 ./firmware/flash-prebuilt.sh
+```
+
+El script recomendado graba por separado `bootloader.bin`,
+`partition-table.bin` y la aplicación, por lo que conserva la NVS y la
+configuración existente. `flash-factory.sh` usa la imagen combinada para una
+instalación limpia y borra deliberadamente los datos guardados de Wi-Fi,
+administración, detector y Telegram. Consulta
+[`firmware/README.md`](firmware/README.md) para ver offsets, hashes, comandos
+para Windows y macOS y resolución de problemas.
+
+El firmware empaquetado contiene los valores predeterminados del proyecto. No
+incluye el SSID o contraseña de la red de desarrollo ni un token de Telegram.
+
 ## Compilación, instalación y pruebas
 
 ### Requisitos
@@ -600,6 +626,10 @@ idf.py menuconfig
 En `menuconfig`, la sección **WiFi motion detector** permite definir credenciales
 de arranque, GPIO del LED, botón de eventos, CSI, tráfico controlado y formato de
 telemetría.
+
+Los resultados de compilación se crean en `build/`. Cada ejecución correcta de
+`./tools/build.sh` también regenera en [`firmware/`](firmware/) los binarios
+listos para flashear, sus sumas SHA-256 y la información de compilación.
 
 ### Instalar y monitorizar
 

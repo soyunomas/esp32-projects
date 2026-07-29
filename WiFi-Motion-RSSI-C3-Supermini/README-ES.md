@@ -409,6 +409,11 @@ ocultar:
 Un hito marca una transición de reposo a movimiento, no cada muestra mientras
 el estado continúa activo. Los botones `?` explican cada serie.
 
+Las series se diferencian mediante color y patrón: score RSSI azul continuo,
+umbral RSSI naranja discontinuo, score CSI verde con raya larga y umbral CSI
+magenta punteado. Los hitos RSSI son bermellón continuo y los CSI negro
+discontinuo.
+
 La gráfica del navegador es una visualización en vivo: al recargar la página se
 reinicia su historial. La telemetría serie es la vía adecuada para conservar una
 sesión experimental completa.
@@ -617,6 +622,10 @@ idf.py menuconfig
 En `menuconfig`, la sección **WiFi motion detector** permite definir credenciales
 de arranque, GPIO del LED, botón de eventos, CSI, tráfico controlado y formato de
 telemetría.
+
+Los resultados de compilación se crean en `build/`. Cada ejecución correcta de
+`./tools/build.sh` también regenera en [`firmware/`](firmware/) los binarios
+listos para flashear, sus sumas SHA-256 y la información de compilación.
 
 ### Instalar y monitorizar
 
