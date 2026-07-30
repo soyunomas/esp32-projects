@@ -16,18 +16,20 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "mbedtls/base64.h"
+#include "motion_history.h"
 #include "probe_config.h"
 #include "reference_store.h"
 #include "captive_dns.h"
 
 #define PORTAL_BODY_SIZE 3072U
-#define PORTAL_PAGE_SIZE 24576U
+#define PORTAL_PAGE_SIZE 49152U
 #define PORTAL_MAX_NETWORKS 16U
 #define PORTAL_MAX_CHOICES (PORTAL_MAX_NETWORKS + PROBE_CONFIG_MAX_SSIDS)
 
 static atomic_bool portal_active;
 static httpd_handle_t server;
 static SemaphoreHandle_t network_mutex;
+static SemaphoreHandle_t history_mutex;
 typedef struct {
     uint8_t ssid[32];
     uint8_t ssid_length;
@@ -59,6 +61,10 @@ static atomic_llong calibration_deadline_ms;
 static atomic_bool calibration_running;
 static atomic_uint calibration_completed_scans;
 static atomic_uint calibration_target_scans;
+static motion_history_t motion_history;
+static motion_clock_t motion_clock;
+static motion_history_event_t
+    history_snapshot[MOTION_HISTORY_CAPACITY];
 
 void maintenance_portal_update_detector(
     uint32_t scan_id,
@@ -78,6 +84,29 @@ void maintenance_portal_update_detector(
     atomic_store(&runtime_trigger_count, result->trigger_count);
     atomic_store(&runtime_trigger_required, result->trigger_required);
     atomic_store(&runtime_updated_ms, esp_timer_get_time() / 1000);
+    if (history_mutex != NULL &&
+        xSemaphoreTake(history_mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        const int64_t now_ms = esp_timer_get_time() / 1000;
+        if (result->state == MULTIREF_STATE_MOTION) {
+            if (result->state_changed) {
+                motion_history_start(
+                    &motion_history,
+                    scan_id,
+                    now_ms,
+                    result->score_x100,
+                    result->trigger_score_x100,
+                    result->coverage_permille);
+            }
+            motion_history_update(&motion_history,
+                                  scan_id,
+                                  result->score_x100,
+                                  result->coverage_permille);
+        } else if (result->state_changed &&
+                   result->previous_state == MULTIREF_STATE_MOTION) {
+            motion_history_finish(&motion_history, scan_id, now_ms);
+        }
+        xSemaphoreGive(history_mutex);
+    }
 }
 
 bool maintenance_portal_take_calibration_request(void)
@@ -448,37 +477,77 @@ static bool build_selected_json(const probe_config_blob_t *config)
         portal_selected, sizeof(portal_selected), &length, "]");
 }
 
-static esp_err_t login_page_handler(httpd_req_t *request)
+static const char *selected_u16(uint16_t actual, uint16_t option)
+{
+    return actual == option ? "selected" : "";
+}
+
+static const char *selected_u8(uint8_t actual, uint8_t option)
+{
+    return actual == option ? "selected" : "";
+}
+
+static bool request_spanish(httpd_req_t *request)
+{
+    char query[48] = "";
+    char language[8] = "";
+    return httpd_req_get_url_query_str(
+               request, query, sizeof(query)) == ESP_OK &&
+           httpd_query_key_value(
+               query, "lang", language, sizeof(language)) == ESP_OK &&
+           strcmp(language, "es") == 0;
+}
+
+static esp_err_t login_page_handler(httpd_req_t *request,
+                                    bool spanish)
 {
     httpd_resp_set_type(request, "text/html; charset=utf-8");
     httpd_resp_set_hdr(request, "Cache-Control", "no-store");
     httpd_resp_set_hdr(request, "X-Content-Type-Options", "nosniff");
-    return httpd_resp_sendstr(
-        request,
-        "<!doctype html><html lang=es><meta name=viewport "
+    const int length = snprintf(
+        portal_page,
+        sizeof(portal_page),
+        "<!doctype html><html lang=%s><meta name=viewport "
         "content='width=device-width,initial-scale=1'><title>Motion C3</title>"
         "<style>*{box-sizing:border-box}body{font:19px system-ui;margin:0;"
         "min-height:100vh;display:grid;place-items:center;padding:20px;"
-        "background:#0b1118;color:#f5f7fa}.login{width:min(100%,440px);"
+        "background:#0b1118;color:#f5f7fa}.login{width:min(100%%,440px);"
         "background:#172331;padding:26px;border-radius:16px;box-shadow:"
         "0 12px 40px #0008}h1{margin-top:0}label{display:block;margin:18px 0}"
-        "input{display:block;width:100%;font:inherit;padding:13px;margin-top:"
-        "7px;border:2px solid #789;border-radius:9px}button{width:100%;font:"
+        "input{display:block;width:100%%;font:inherit;padding:13px;margin-top:"
+        "7px;border:2px solid #789;border-radius:9px}button{width:100%%;font:"
         "bold 20px system-ui;padding:14px;background:#00a86b;color:white;"
         "border:0;border-radius:9px}.hint{color:#b9c8d8}</style>"
-        "<form class=login method=post action=/login><h1>WiFi Motion C3</h1>"
-        "<p>Accede para ver la detección, la gráfica y la configuración.</p>"
-        "<label>Usuario<input name=username value=admin maxlength=16 "
-        "autocomplete=username required></label><label>Contraseña<input "
+        "<form class=login method=post action='/login?lang=%s'>"
+        "<p><a href='/?lang=en'>English</a> · "
+        "<a href='/?lang=es'>Español</a></p><h1>WiFi Motion C3</h1>"
+        "<p>%s</p>"
+        "<label>%s<input name=username value=admin maxlength=16 "
+        "autocomplete=username required></label><label>%s<input "
         "name=password type=password maxlength=32 autocomplete=current-password "
-        "required autofocus></label><button>Entrar</button>"
-        "<p class=hint>Acceso inicial: admin / admin</p></form></html>");
+        "required autofocus></label><button>%s</button>"
+        "<p class=hint>%s</p></form></html>",
+        spanish ? "es" : "en",
+        spanish ? "es" : "en",
+        spanish
+            ? "Accede para ver la detección, el historial y la configuración."
+            : "Sign in to view detection, history and configuration.",
+        spanish ? "Usuario" : "Username",
+        spanish ? "Contraseña" : "Password",
+        spanish ? "Entrar" : "Sign in",
+        spanish ? "Acceso inicial: admin / admin"
+                : "Initial access: admin / admin");
+    if (length < 0 || (size_t)length >= sizeof(portal_page)) {
+        return httpd_resp_send_err(
+            request, HTTPD_500_INTERNAL_SERVER_ERROR, "login page error");
+    }
+    return httpd_resp_send(request, portal_page, length);
 }
 
 static esp_err_t page_handler(httpd_req_t *request)
 {
     if (!request_authenticated(request)) {
-        return login_page_handler(request);
+        return login_page_handler(request, request_spanish(request));
     }
     probe_config_blob_t config;
     if (probe_config_load(&config) != PROBE_CONFIG_OK) {
@@ -498,7 +567,7 @@ static esp_err_t page_handler(httpd_req_t *request)
     const int length = snprintf(
         portal_page,
         sizeof(portal_page),
-        "<!doctype html><html lang=es><meta name=viewport "
+        "<!doctype html><html lang=en><meta name=viewport "
         "content='width=device-width,initial-scale=1'><title>Motion C3</title>"
         "<style>*{box-sizing:border-box}body{font:18px system-ui;max-width:"
         "760px;margin:20px auto;padding:16px;background:#0b1118;color:#f5f7fa}"
@@ -527,7 +596,8 @@ static esp_err_t page_handler(httpd_req_t *request)
         "padding:13px;margin:10px 0;border-radius:10px}.net span{min-width:0;"
         "flex:1}.net b{display:block;"
         "overflow-wrap:anywhere}.net small{display:block;color:#b9c8d8;"
-        "margin-top:4px}input[type=text],input[type=password],input[type=number]"
+        "margin-top:4px}input[type=text],input[type=password],input[type=number],"
+        "select"
         "{font-size:18px;"
         "width:100%%;padding:12px;margin-top:6px;box-sizing:border-box}"
         "button{font-size:20px;padding:14px 22px;background:#00a86b;"
@@ -539,51 +609,173 @@ static esp_err_t page_handler(httpd_req_t *request)
         ".calibration-row label{flex:1;min-width:190px}.calibration-row button{"
         "flex:1}.empty{padding:16px;background:#243447;"
         "border-radius:10px;color:#b9c8d8}"
+        ".lang{display:flex;justify-content:flex-end;gap:10px;margin-bottom:14px}"
+        ".lang a,.downloads a{color:#7dd3fc}.table-wrap{overflow:auto}"
+        "table{width:100%%;border-collapse:collapse;font-size:15px}"
+        "th,td{text-align:left;padding:9px;border-bottom:1px solid #405268;"
+        "white-space:nowrap}.downloads{display:flex;gap:18px;flex-wrap:wrap}"
         ".hint{color:#b9c8d8}.warn{color:#ffd166}@media(prefers-reduced-motion:"
         "reduce){.detector.motion .dot{animation:none}}</style><body>"
+        "<nav class=lang aria-label=Language><a href='/?lang=en'>English</a>"
+        "<span aria-hidden=true>·</span><a href='/?lang=es'>Español</a></nav>"
         "<h1>WiFi Motion C3</h1>"
         "<section id=detector class='detector wait' role=status aria-live=polite>"
         "<span class=dot aria-hidden=true></span><div><strong id=motion_label>"
-        "Esperando datos</strong><div id=motion_detail class=detail>"
-        "El detector está iniciándose.</div></div></section>"
-        "<section class=chart><h2>Actividad en tiempo real</h2>"
-        "<div class=legend><span class=key><i class=swatch></i>Score de cambio"
-        "</span><span class=key><i class='swatch threshold'></i>Umbral"
-        "</span><span class=key><i class='swatch hit'></i>Detección</span></div>"
+        "Waiting for data</strong><div id=motion_detail class=detail>"
+        "The detector is starting.</div></div></section>"
+        "<section class=chart><h2 id=activity_title>Live activity</h2>"
+        "<div class=legend><span class=key><i class=swatch></i><span "
+        "id=legend_score>Change score</span></span><span class=key><i "
+        "class='swatch threshold'></i><span id=legend_threshold>Threshold</span>"
+        "</span><span class=key><i class='swatch hit'></i><span "
+        "id=legend_detection>Detection</span></span></div>"
         "<div class=chart-wrap><canvas id=motion_chart role=img aria-label="
-        "'Gráfica temporal del score, umbral y detecciones'></canvas></div>"
-        "<p id=chart_note class=chart-note>Esperando muestras…</p></section>"
-        "<section class=card><h2>Calibración sin presencia</h2>"
-        "<p>El detector esperará el tiempo indicado para que puedas salir. "
-        "Después buscará de nuevo las redes y aprenderá el ambiente vacío.</p>"
-        "<div class=calibration-row><label>Tiempo para salir (segundos)"
+        "'Timeline of score, threshold and detections'></canvas></div>"
+        "<p id=chart_note class=chart-note>Waiting for samples…</p></section>"
+        "<section class=card><h2 id=clock_title>Date and time</h2>"
+        "<p id=clock_help>Set the local date and time after each restart. "
+        "The clock and history remain in memory until the next restart.</p>"
+        "<div class=calibration-row><label><span id=clock_label>Local date and "
+        "time</span><input id=clock_input type=datetime-local step=1></label>"
+        "<button id=set_clock type=button>Set date and time</button></div>"
+        "<p id=clock_status class=hint role=status aria-live=polite>"
+        "Time is not configured.</p></section>"
+        "<section class=card><h2 id=history_title>Motion history</h2>"
+        "<p id=history_help>Up to 128 detections from this session are kept "
+        "in memory.</p><div class=table-wrap><table><thead><tr>"
+        "<th id=history_time>Date and time</th><th id=history_duration>Duration"
+        "</th><th id=history_peak>Peak score</th><th id=history_threshold>"
+        "Threshold</th><th id=history_coverage>Coverage</th><th id=history_state>"
+        "Status</th></tr></thead><tbody id=history_rows></tbody></table></div>"
+        "<p id=history_empty class=empty>No detections recorded yet.</p>"
+        "<p class=downloads><a id=download_json href=/events.json>Download JSON"
+        "</a><a id=download_csv href=/events.csv>Download CSV</a></p></section>"
+        "<section class=card><h2 id=calibration_title>Empty-room calibration</h2>"
+        "<p id=calibration_help>The detector waits while you leave, then scans "
+        "the networks again and learns the empty environment.</p>"
+        "<div class=calibration-row><label><span id=leave_time_label>Time to "
+        "leave (seconds)</span>"
         "<input id=calibration_delay type=number min=5 max=300 value=20 "
         "inputmode=numeric></label><button id=calibrate class=calibrate "
-        "type=button>Salir y calibrar</button></div>"
+        "type=button>Leave and calibrate</button></div>"
         "<p id=calibration_status class=hint role=status aria-live=polite>"
-        "No hay ninguna calibración programada.</p></section>"
-        "<form class=card method=post action=/save><h2>Configuración</h2>"
+        "No calibration is scheduled.</p></section>"
+        "<form class=card method=post action=/save><h2 id=config_title>"
+        "Configuration</h2>"
         "<input id=csrf type=hidden name=csrf value=%s>"
         "<label class=mode><input type=radio name=mode value=auto %s> "
-        "<b>Automático</b> — usa las mejores redes visibles</label>"
+        "<span id=automatic_mode><b>Automatic</b> — use the best visible "
+        "networks</span></label>"
         "<label class=mode><input id=manual type=radio name=mode value=manual %s> "
-        "<b>Elegir redes</b> — selecciona hasta 8</label>"
-        "<h2>Buscar redes</h2><div class=toolbar>"
-        "<button id=scan type=button>Buscar redes</button>"
+        "<span id=manual_mode><b>Choose networks</b> — select up to 8</span>"
+        "</label><h2 id=search_title>Find networks</h2><div class=toolbar>"
+        "<button id=scan type=button>Find networks</button>"
         "<span id=status aria-live=polite></span></div>"
         "<div id=results></div>"
-        "<h2>Redes elegidas <span id=count></span></h2>"
+        "<h2><span id=chosen_title>Selected networks</span> "
+        "<span id=count></span></h2>"
         "<div id=chosen></div><div id=inputs></div>"
-        "<p class=hint>Pulsa <b>+ Añadir</b> en cada red de referencia. "
-        "No hace falta conectarse a ellas ni conocer su clave.</p>"
-        "<h2>Acceso a esta configuración</h2>"
-        "<label>Usuario<input type=text name=admin_user maxlength=%u "
+        "<p id=network_hint class=hint>Press <b>+ Add</b> on each reference "
+        "network. The device never joins them or needs their password.</p>"
+        "<h2 id=detection_settings_title>Detection settings</h2>"
+        "<p id=detection_settings_help class=hint>They apply after restart and "
+        "do not need recalibration. Changing selected networks does.</p>"
+        "<label><span id=sensitivity_label>Sensitivity</span><select "
+        "name=trigger_score><option id=sensitivity_sensitive value=200 %s>"
+        "Sensitive (2.00)</option><option id=sensitivity_balanced value=250 %s>"
+        "Balanced (2.50)</option><option id=sensitivity_conservative value=350 %s>"
+        "Conservative (3.50)</option></select></label>"
+        "<label><span id=confirmation_label>Motion confirmation</span><select "
+        "name=trigger_consecutive><option id=confirmation_1 value=1 %s>1 reading"
+        "</option><option id=confirmation_2 value=2 %s>2 readings</option>"
+        "<option id=confirmation_3 value=3 %s>3 readings</option></select></label>"
+        "<label><span id=speed_label>Detection speed</span><select name=scan_delay>"
+        "<option id=speed_fast value=250 %s>Fast</option><option id=speed_normal "
+        "value=500 %s>Normal</option><option id=speed_slow value=1000 %s>Slow"
+        "</option></select></label>"
+        "<label><span id=motion_duration_label>Motion state duration</span><select "
+        "name=motion_duration><option id=duration_2 value=2 %s>2 seconds</option>"
+        "<option id=duration_4 value=4 %s>4 seconds</option><option id=duration_8 "
+        "value=8 %s>8 seconds</option></select></label>"
+        "<label><span id=calibration_duration_label>Calibration duration</span>"
+        "<select name=calibration_scans><option id=calibration_15 value=15 %s>"
+        "Fast · 15 scans</option><option id=calibration_25 value=25 %s>Normal · "
+        "25 scans</option><option id=calibration_40 value=40 %s>Precise · 40 "
+        "scans</option></select></label>"
+        "<p id=calibration_warning class=warn>A shorter calibration finishes "
+        "sooner but may choose less stable references. It applies to initial "
+        "and manual calibration.</p>"
+        "<h2 id=access_title>Configuration access</h2>"
+        "<label><span id=username_label>Username</span><input type=text "
+        "name=admin_user maxlength=%u "
         "required value=\"%s\"></label>"
-        "<label>Nueva contraseña<input type=password name=admin_pass "
-        "minlength=4 maxlength=%u placeholder='Dejar vacía para conservar'>"
-        "</label><p class=warn>El valor inicial admin/admin es débil; "
-        "conviene cambiarlo.</p><button class=primary>Guardar y revisar</button>"
-        "</form><script>let networks=%s,selected=%s;"
+        "<label><span id=password_label>New password</span><input type=password "
+        "name=admin_pass minlength=4 maxlength=%u "
+        "placeholder='Leave blank to keep the current password'></label>"
+        "<p id=password_warning class=warn>The initial admin/admin credentials "
+        "are weak; change them.</p><div class=toolbar>"
+        "<button id=save_config class=primary name=action value=save>Save "
+        "configuration"
+        "</button><button class='primary calibrate' name=action "
+        "value=recalibrate id=save_recalibrate>Save and recalibrate</button>"
+        "</div></form>"
+        "<form class=card method=post action=/restore-detection>"
+        "<input type=hidden name=csrf value=%s><h2 id=defaults_title>Defaults</h2>"
+        "<p id=defaults_help class=hint>Only restores these detection settings. "
+        "Credentials, selected networks and calibrated references are kept.</p>"
+        "<button id=restore_detection class=calibrate>Restore detection settings"
+        "</button></form>"
+        "<script>const LANG='%s',tr=(en,es)=>LANG==='es'?es:en;"
+        "document.documentElement.lang=LANG;const ES={motion_label:'Esperando "
+        "datos',motion_detail:'El detector está iniciándose.',activity_title:"
+        "'Actividad en tiempo real',legend_score:'Score de cambio',"
+        "legend_threshold:'Umbral',legend_detection:'Detección',chart_note:"
+        "'Esperando muestras…',clock_title:'Fecha y hora',clock_help:'Configura "
+        "la fecha y hora local después de cada reinicio. El reloj y el historial "
+        "se conservan en memoria hasta el siguiente reinicio.',clock_label:"
+        "'Fecha y hora local',set_clock:'Configurar fecha y hora',clock_status:"
+        "'La hora no está configurada.',history_title:'Historial de detecciones',"
+        "history_help:'Se conservan en memoria hasta 128 detecciones de esta "
+        "sesión.',history_time:'Fecha y hora',history_duration:'Duración',"
+        "history_peak:'Pico de score',history_threshold:'Umbral',history_coverage:"
+        "'Cobertura',history_state:'Estado',history_empty:'Todavía no hay "
+        "detecciones registradas.',download_json:'Descargar JSON',download_csv:"
+        "'Descargar CSV',calibration_title:'Calibración sin presencia',"
+        "calibration_help:'El detector espera mientras sales; después busca de "
+        "nuevo las redes y aprende el ambiente vacío.',leave_time_label:'Tiempo "
+        "para salir (segundos)',calibrate:'Salir y calibrar',calibration_status:"
+        "'No hay ninguna calibración programada.',config_title:'Configuración',"
+        "search_title:'Buscar redes',scan:'Buscar redes',chosen_title:'Redes "
+        "elegidas',detection_settings_title:'Ajustes de detección',"
+        "detection_settings_help:'Se aplican al reiniciar y no necesitan "
+        "recalibración. Cambiar las redes elegidas sí requiere recalibrar.',"
+        "sensitivity_label:'Sensibilidad',sensitivity_sensitive:'Sensible (2,00)',"
+        "sensitivity_balanced:'Equilibrado (2,50)',sensitivity_conservative:"
+        "'Conservador (3,50)',confirmation_label:'Confirmación de movimiento',"
+        "confirmation_1:'1 lectura',confirmation_2:'2 lecturas',confirmation_3:"
+        "'3 lecturas',speed_label:'Velocidad de detección',speed_fast:'Rápida',"
+        "speed_normal:'Normal',speed_slow:'Lenta',motion_duration_label:'Duración "
+        "del estado de movimiento',duration_2:'2 segundos',duration_4:'4 segundos',"
+        "duration_8:'8 segundos',calibration_duration_label:'Duración de la "
+        "calibración',calibration_15:'Rápida · 15 escaneos',calibration_25:"
+        "'Normal · 25 escaneos',calibration_40:'Precisa · 40 escaneos',"
+        "calibration_warning:'Una calibración corta termina antes, pero puede "
+        "elegir referencias menos estables. Se aplica a la calibración inicial "
+        "y manual.',access_title:'Acceso a esta configuración',username_label:"
+        "'Usuario',password_label:'Nueva contraseña',password_warning:'El valor "
+        "inicial admin/admin es débil; conviene cambiarlo.',save_config:'Guardar "
+        "configuración',save_recalibrate:'Guardar y recalibrar',defaults_title:"
+        "'Valores iniciales',defaults_help:'Solo restaura estos ajustes. Conserva "
+        "credenciales, redes elegidas y referencias calibradas.',restore_detection:"
+        "'Restaurar ajustes de detección'};if(LANG==='es'){for(const[k,v]of "
+        "Object.entries(ES)){const e=document.getElementById(k);if(e)e.textContent="
+        "v}document.querySelector('[name=admin_pass]').placeholder='Dejar vacía "
+        "para conservar';document.getElementById('automatic_mode').innerHTML="
+        "'<b>Automático</b> — usa las mejores redes visibles';document.getElementById"
+        "('manual_mode').innerHTML='<b>Elegir redes</b> — selecciona hasta 8';"
+        "document.getElementById('network_hint').innerHTML='Pulsa <b>+ Añadir</b> "
+        "en cada red de referencia. No hace falta conectarse ni conocer su clave.'}"
+        "let networks=%s,selected=%s;"
         "const R=document.querySelector('#results'),C=document.querySelector("
         "'#chosen'),I=document.querySelector('#inputs'),N=document.querySelector("
         "'#count'),S=document.querySelector('#status'),D=document.querySelector("
@@ -591,19 +783,24 @@ static esp_err_t page_handler(httpd_req_t *request)
         "querySelector('#motion_detail'),V=document.querySelector('#motion_chart'),"
         "G=document.querySelector('#chart_note'),CB=document.querySelector("
         "'#calibrate'),CD=document.querySelector('#calibration_delay'),CS="
-        "document.querySelector('#calibration_status');"
+        "document.querySelector('#calibration_status'),CI=document.querySelector("
+        "'#clock_input'),CT=document.querySelector('#clock_status'),HR=document."
+        "querySelector('#history_rows'),HE=document.querySelector('#history_empty');"
         "const HISTORY=120000,points=[];let lastScan=0,lastMotion=false,hits=0;"
-        "function stateView(d){if(!d.live)return['Sin conexión con el detector',"
-        "'bad'];if(d.state==='MOTION')return['MOVIMIENTO DETECTADO','motion'];"
-        "if(d.state==='IDLE')return['Sin movimiento','idle'];if(d.state==="
-        "'CALIBRATING'||d.state==='WARMUP')return['Calibrando','wait'];return"
-        "['Sin cobertura suficiente','bad']}"
+        "function stateView(d){if(!d.live)return[tr('Detector offline','Sin "
+        "conexión con el detector'),'bad'];if(d.state==='MOTION')return[tr("
+        "'MOTION DETECTED','MOVIMIENTO DETECTADO'),'motion'];if(d.state==='IDLE')"
+        "return[tr('No motion','Sin movimiento'),'idle'];if(d.state==='CALIBRATING'"
+        "||d.state==='WARMUP')return[tr('Calibrating','Calibrando'),'wait'];return"
+        "[tr('Insufficient coverage','Sin cobertura suficiente'),'bad']}"
         "function renderStatus(d){const v=stateView(d),motion=d.state==='MOTION'"
         "&&d.live;D.className='detector '+v[1];L.textContent=v[0];M.textContent="
-        "`Score ${(d.score_x100/100).toFixed(2)} · Umbral ${(d.trigger_x100/100"
-        ").toFixed(2)} · Cobertura ${(d.coverage_permille/10).toFixed(0)}"
+        "`${tr('Score','Score')} ${(d.score_x100/100).toFixed(2)} · ${tr("
+        "'Threshold','Umbral')} ${(d.trigger_x100/100"
+        ").toFixed(2)} · ${tr('Coverage','Cobertura')} ${(d.coverage_permille/10).toFixed(0)}"
         "${String.fromCharCode(37)} · ${d.observed_references}/${d.reference_count}"
-        " referencias${d.state==='IDLE'&&d.trigger_count?` · Confirmación "
+        " ${tr('references','referencias')}${d.state==='IDLE'&&d.trigger_count?"
+        "` · ${tr('Confirmation','Confirmación')} "
         "${d.trigger_count}/${d.trigger_required}`:''}`;if(d.scan_id===lastScan)"
         "return;lastScan=d.scan_id;if("
         "motion&&!lastMotion)hits++;lastMotion=motion;const now=Date.now();points."
@@ -632,19 +829,24 @@ static esp_err_t page_handler(httpd_req_t *request)
         "first?(x.moveTo(px,py),first=false):x.lineTo(px,py)}x.stroke();x."
         "setLineDash([])}line('threshold','#e69f00',[7,4]);line('score','#0072b2'"
         ",[]);G.textContent=points.length?`Ventana: 2 minutos · ${hits} "
-        "detecciones desde que abriste la página`:'Esperando muestras…'}"
+        "${tr('detections since opening the page','detecciones desde que abriste "
+        "la página')}`:tr('Waiting for samples…','Esperando muestras…')}"
         "function renderCalibration(d){if(d.calibration_state==='scheduled'){CS."
-        "textContent=`Sal ahora: la calibración comienza en "
-        "${d.calibration_remaining_seconds} s.`;CB.disabled=false}else if(d."
-        "calibration_state==='running'){CS.textContent=`Calibrando ambiente vacío"
-        ": ${d.calibration_completed_scans}/${d.calibration_target_scans} "
-        "escaneos.`;CB.disabled=true}else{CS.textContent='No hay ninguna "
-        "calibración programada.';CB.disabled=false}}"
+        "textContent=tr(`Leave now: calibration starts in ${d."
+        "calibration_remaining_seconds} s.`,`Sal ahora: la calibración comienza "
+        "en ${d.calibration_remaining_seconds} s.`);CB.disabled=false}else if(d."
+        "calibration_state==='running'){CS.textContent=tr(`Calibrating empty room:"
+        " ${d.calibration_completed_scans}/${d.calibration_target_scans} scans.`,"
+        "`Calibrando ambiente vacío: ${d.calibration_completed_scans}/${d."
+        "calibration_target_scans} escaneos.`);CB.disabled=true}else{CS.textContent="
+        "tr('No calibration is scheduled.','No hay ninguna calibración "
+        "programada.');CB.disabled=false}}"
         "async function poll(){try{const r=await fetch('/status',{cache:'no-store'"
         "});if(!r.ok)throw Error();const d=await r.json();renderStatus(d);"
         "renderCalibration(d)}catch(e){D."
-        "className='detector bad';L.textContent='Sin conexión';M.textContent="
-        "'No se reciben datos del dispositivo.'}setTimeout(poll,750)}"
+        "className='detector bad';L.textContent=tr('Offline','Sin conexión');"
+        "M.textContent=tr('No data is being received from the device.','No se "
+        "reciben datos del dispositivo.')}setTimeout(poll,750)}"
         "addEventListener('resize',drawChart);"
         "function row(name,detail,action,label,klass){const d=document.createElement("
         "'div'),s=document.createElement('span'),b=document.createElement('b'),"
@@ -653,45 +855,100 @@ static esp_err_t page_handler(httpd_req_t *request)
         "x.type='button';x.className=klass;x.textContent=label;x.onclick=action;"
         "d.append(s,x);return d}"
         "function draw(){R.replaceChildren();if(!networks.length){const e=document."
-        "createElement('p');e.className='empty';e.textContent='Pulsa Buscar redes "
-        "para actualizar la lista.';R.append(e)}networks.forEach(n=>{const added="
-        "selected.includes(n.ssid),detail=`Canal ${n.channel} · ${n.rssi} dBm · "
-        "${n.aps} AP`;const x=row(n.ssid,detail,()=>add(n.ssid),added?'Añadida':"
-        "'+ Añadir','add');x.lastChild.disabled=added;R.append(x)});C.replaceChildren"
+        "createElement('p');e.className='empty';e.textContent=tr('Press Find "
+        "networks to refresh the list.','Pulsa Buscar redes para actualizar la "
+        "lista.');R.append(e)}networks.forEach(n=>{const added=selected.includes("
+        "n.ssid),detail=`${tr('Channel','Canal')} ${n.channel} · ${n.rssi} dBm · "
+        "${n.aps} AP`;const x=row(n.ssid,detail,()=>add(n.ssid),added?tr('Added',"
+        "'Añadida'):tr('+ Add','+ Añadir'),'add');x.lastChild.disabled=added;"
+        "R.append(x)});C.replaceChildren"
         "();I.replaceChildren();N.textContent=`(${selected.length}/8)`;"
         "if(!selected.length){const e=document.createElement('p');e.className="
-        "'empty';e.textContent='Todavía no has añadido ninguna red.';C.append(e)}"
-        "selected.forEach((name,i)=>{C.append(row(name,'Red de referencia',()=>"
-        "{selected.splice(i,1);draw()},'Quitar','remove'));const h=document."
+        "'empty';e.textContent=tr('No networks selected yet.','Todavía no has "
+        "añadido ninguna red.');C.append(e)}selected.forEach((name,i)=>{C.append("
+        "row(name,tr('Reference network','Red de referencia'),()=>{selected.splice"
+        "(i,1);draw()},tr('Remove','Quitar'),'remove'));const h=document."
         "createElement('input');h.type='hidden';h.name='ssid'+i;h.value=name;"
         "I.append(h)})}"
         "function add(name){if(selected.includes(name))return;if(selected.length"
-        ">=8){alert('Máximo 8 redes');return}selected.push(name);document."
+        ">=8){alert(tr('Maximum 8 networks','Máximo 8 redes'));return}selected."
+        "push(name);document."
         "querySelector('#manual').checked=true;draw()}"
         "document.querySelector('#scan').onclick=async function(){this.disabled="
-        "true;S.textContent='Buscando…';try{const r=await fetch('/networks',{"
+        "true;S.textContent=tr('Searching…','Buscando…');try{const r=await "
+        "fetch('/networks',{"
         "method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'"
         "},body:'csrf='+encodeURIComponent(document.querySelector('#csrf').value)"
         "});if(!r.ok)throw Error();networks=await r.json();S.textContent=networks."
-        "length?`${networks.length} redes encontradas`:'No se encontraron redes';"
-        "draw()}catch(e){S.textContent='No se pudo buscar. Inténtalo otra vez.'}"
+        "length?tr(`${networks.length} networks found`,`${networks.length} redes "
+        "encontradas`):tr('No networks found','No se encontraron redes');draw()}"
+        "catch(e){S.textContent=tr('Search failed. Try again.','No se pudo buscar."
+        " Inténtalo otra vez.')}"
         "finally{this.disabled=false}};draw();poll();"
         "CB.onclick=async function(){const delay=Number(CD.value);if(!Number."
-        "isInteger(delay)||delay<5||delay>300){CS.textContent='Indica entre 5 y "
-        "300 segundos.';return}this.disabled=true;CS.textContent='Programando…';"
+        "isInteger(delay)||delay<5||delay>300){CS.textContent=tr('Enter 5 to 300 "
+        "seconds.','Indica entre 5 y 300 segundos.');return}this.disabled=true;"
+        "CS.textContent=tr('Scheduling…','Programando…');"
         "try{const r=await fetch('/calibrate',{method:'POST',headers:{"
         "'Content-Type':'application/x-www-form-urlencoded'},body:'csrf='+"
         "encodeURIComponent(document.querySelector('#csrf').value)+'&delay_seconds"
         "='+delay});if(!r.ok)throw Error();renderCalibration(await r.json())}"
-        "catch(e){CS.textContent='No se pudo programar la calibración.';this."
-        "disabled=false}};"
+        "catch(e){CS.textContent=tr('Calibration could not be scheduled.','No se "
+        "pudo programar la calibración.');this.disabled=false}};"
+        "function localInputValue(d){const z=new Date(d.getTime()-d.getTimezoneOffset"
+        "()*60000);return z.toISOString().slice(0,19)}CI.value=localInputValue(new "
+        "Date());function renderHistory(d){CT.textContent=d.clock_configured?tr("
+        "`Clock set: ${new Date(d.now_epoch_seconds*1000).toLocaleString()}`,`Reloj "
+        "configurado: ${new Date(d.now_epoch_seconds*1000).toLocaleString()}`):tr("
+        "'Time is not configured. Set it to date the detections.','La hora no está "
+        "configurada. Ajústala para fechar las detecciones.');HR.replaceChildren();"
+        "const events=[...d.events].reverse();HE.hidden=events.length>0;for(const "
+        "e of events){const row=document.createElement('tr'),values=[e."
+        "started_epoch_seconds===null?tr('Time not set','Hora sin configurar'):new "
+        "Date(e.started_epoch_seconds*1000).toLocaleString(),`${(e.duration_ms/1000)"
+        ".toFixed(1)} s`,(e.peak_score_x100/100).toFixed(2),(e.trigger_score_x100/"
+        "100).toFixed(2),`${(e.coverage_permille/10).toFixed(0)}${String."
+        "fromCharCode(37)}`,e.active?tr('Active','Activa'):tr('Completed','Finalizada"
+        "')];for(const value of values){const cell=document.createElement('td');"
+        "cell.textContent=value;row.append(cell)}HR.append(row)}}async function "
+        "loadHistory(){try{const r=await fetch('/events',{cache:'no-store'});if(!r.ok)"
+        "throw Error();renderHistory(await r.json())}catch(e){CT.textContent=tr("
+        "'History unavailable.','Historial no disponible.')}}async function "
+        "pollHistory(){await loadHistory();setTimeout(pollHistory,3000)}document."
+        "querySelector('#set_clock').onclick=async function(){const "
+        "date=new Date(CI.value);if(!CI.value||Number.isNaN(date.getTime())){CT."
+        "textContent=tr('Enter a valid date and time.','Indica una fecha y hora "
+        "válidas.');return}this.disabled=true;CT.textContent=tr('Setting clock…',"
+        "'Configurando reloj…');try{const body='csrf='+encodeURIComponent(document."
+        "querySelector('#csrf').value)+'&epoch_seconds='+Math.floor(date.getTime()/"
+        "1000),r=await fetch('/clock',{method:'POST',headers:{'Content-Type':"
+        "'application/x-www-form-urlencoded'},body});if(!r.ok)throw Error();await "
+        "loadHistory()}catch(e){CT.textContent=tr('Clock could not be set.','No se "
+        "pudo configurar el reloj.')}finally{this.disabled=false}};pollHistory();"
         "</script></body></html>",
         csrf_token,
         manual ? "" : "checked",
         manual ? "checked" : "",
+        selected_u16(config.trigger_score_x100, 200U),
+        selected_u16(config.trigger_score_x100, 250U),
+        selected_u16(config.trigger_score_x100, 350U),
+        selected_u8(config.trigger_consecutive, 1U),
+        selected_u8(config.trigger_consecutive, 2U),
+        selected_u8(config.trigger_consecutive, 3U),
+        selected_u16(config.inter_scan_delay_ms, 250U),
+        selected_u16(config.inter_scan_delay_ms, 500U),
+        selected_u16(config.inter_scan_delay_ms, 1000U),
+        selected_u8(config.motion_duration_seconds, 2U),
+        selected_u8(config.motion_duration_seconds, 4U),
+        selected_u8(config.motion_duration_seconds, 8U),
+        selected_u16(config.calibration_scans, 15U),
+        selected_u16(config.calibration_scans, 25U),
+        selected_u16(config.calibration_scans, 40U),
         (unsigned)PROBE_CONFIG_ADMIN_USER_MAX_LENGTH,
         escaped_user,
         (unsigned)PROBE_CONFIG_ADMIN_PASSWORD_MAX_LENGTH,
+        csrf_token,
+        request_spanish(request) ? "es" : "en",
         portal_options,
         portal_selected);
     if (length < 0 || (size_t)length >= sizeof(portal_page)) {
@@ -750,6 +1007,280 @@ static bool valid_csrf(const char *body)
                                strlen(csrf_token));
 }
 
+static bool read_u16(const char *body,
+                     const char *key,
+                     uint16_t *value)
+{
+    char text[8] = "";
+    if (httpd_query_key_value(body, key, text, sizeof(text)) != ESP_OK ||
+        !url_decode(text) || text[0] == '\0') {
+        return false;
+    }
+    char *end = NULL;
+    const unsigned long parsed = strtoul(text, &end, 10);
+    if (end == text || *end != '\0' || parsed > UINT16_MAX) {
+        return false;
+    }
+    *value = (uint16_t)parsed;
+    return true;
+}
+
+static bool read_i64(const char *body,
+                     const char *key,
+                     int64_t *value)
+{
+    char text[24] = "";
+    if (httpd_query_key_value(body, key, text, sizeof(text)) != ESP_OK ||
+        !url_decode(text) || text[0] == '\0') {
+        return false;
+    }
+    char *end = NULL;
+    const long long parsed = strtoll(text, &end, 10);
+    if (end == text || *end != '\0') {
+        return false;
+    }
+    *value = (int64_t)parsed;
+    return true;
+}
+
+static size_t copy_history(motion_clock_t *clock)
+{
+    if (history_mutex == NULL ||
+        xSemaphoreTake(history_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+        return 0U;
+    }
+    const size_t count = motion_history_snapshot(
+        &motion_history,
+        history_snapshot,
+        MOTION_HISTORY_CAPACITY);
+    *clock = motion_clock;
+    xSemaphoreGive(history_mutex);
+    return count;
+}
+
+static esp_err_t clock_handler(httpd_req_t *request)
+{
+    if (!authenticated(request)) {
+        return ESP_OK;
+    }
+    if (!read_request_body(request) || !valid_csrf(portal_body)) {
+        return httpd_resp_send_err(
+            request, HTTPD_400_BAD_REQUEST, "invalid request");
+    }
+    int64_t epoch_seconds = 0;
+    if (!read_i64(
+            portal_body, "epoch_seconds", &epoch_seconds) ||
+        history_mutex == NULL ||
+        xSemaphoreTake(history_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+        return httpd_resp_send_err(
+            request, HTTPD_400_BAD_REQUEST, "invalid date and time");
+    }
+    const bool configured = motion_clock_set(
+        &motion_clock,
+        epoch_seconds,
+        esp_timer_get_time() / 1000);
+    xSemaphoreGive(history_mutex);
+    if (!configured) {
+        return httpd_resp_send_err(
+            request, HTTPD_400_BAD_REQUEST, "date out of range");
+    }
+    char response[96];
+    (void)snprintf(response,
+                   sizeof(response),
+                   "{\"configured\":true,\"epoch_seconds\":%" PRId64 "}",
+                   epoch_seconds);
+    httpd_resp_set_type(request, "application/json; charset=utf-8");
+    httpd_resp_set_hdr(request, "Cache-Control", "no-store");
+    return httpd_resp_sendstr(request, response);
+}
+
+static esp_err_t events_json_handler(httpd_req_t *request)
+{
+    if (!authenticated(request)) {
+        return ESP_OK;
+    }
+    motion_clock_t clock = {0};
+    const size_t count = copy_history(&clock);
+    int64_t now_epoch = 0;
+    const int64_t now_ms = esp_timer_get_time() / 1000;
+    (void)motion_clock_now(&clock, now_ms, &now_epoch);
+    httpd_resp_set_type(request, "application/json; charset=utf-8");
+    httpd_resp_set_hdr(request, "Cache-Control", "no-store");
+    if (strcmp(request->uri, "/events.json") == 0) {
+        httpd_resp_set_hdr(
+            request,
+            "Content-Disposition",
+            "attachment; filename=motion-events.json");
+    }
+    char header[160];
+    (void)snprintf(
+        header,
+        sizeof(header),
+        "{\"clock_configured\":%s,\"now_epoch_seconds\":%" PRId64
+        ",\"capacity\":%u,\"events\":[",
+        clock.configured ? "true" : "false",
+        now_epoch,
+        (unsigned)MOTION_HISTORY_CAPACITY);
+    esp_err_t error =
+        httpd_resp_send_chunk(request, header, HTTPD_RESP_USE_STRLEN);
+    for (size_t index = 0U;
+         error == ESP_OK && index < count;
+         ++index) {
+        const motion_history_event_t *event =
+            &history_snapshot[index];
+        int64_t started_epoch = 0;
+        int64_t ended_epoch = 0;
+        const bool has_start = motion_clock_at(
+            &clock, event->started_monotonic_ms, &started_epoch);
+        const bool has_end =
+            !event->active &&
+            motion_clock_at(
+                &clock, event->ended_monotonic_ms, &ended_epoch);
+        const int64_t duration_ms =
+            (event->active ? now_ms : event->ended_monotonic_ms) -
+            event->started_monotonic_ms;
+        char start_text[24];
+        char end_text[24];
+        if (has_start) {
+            (void)snprintf(start_text,
+                           sizeof(start_text),
+                           "%" PRId64,
+                           started_epoch);
+        } else {
+            memcpy(start_text, "null", 5U);
+        }
+        if (has_end) {
+            (void)snprintf(end_text,
+                           sizeof(end_text),
+                           "%" PRId64,
+                           ended_epoch);
+        } else {
+            memcpy(end_text, "null", 5U);
+        }
+        char row[448];
+        (void)snprintf(
+            row,
+            sizeof(row),
+            "%s{\"id\":%" PRIu32 ",\"start_scan_id\":%" PRIu32
+            ",\"end_scan_id\":%" PRIu32
+            ",\"started_epoch_seconds\":%s"
+            ",\"ended_epoch_seconds\":%s"
+            ",\"duration_ms\":%" PRId64 ",\"active\":%s"
+            ",\"start_score_x100\":%u,\"peak_score_x100\":%u"
+            ",\"trigger_score_x100\":%u,\"coverage_permille\":%u}",
+            index > 0U ? "," : "",
+            event->id,
+            event->start_scan_id,
+            event->end_scan_id,
+            start_text,
+            end_text,
+            duration_ms,
+            event->active ? "true" : "false",
+            event->start_score_x100,
+            event->peak_score_x100,
+            event->trigger_score_x100,
+            event->coverage_permille);
+        error = httpd_resp_send_chunk(
+            request, row, HTTPD_RESP_USE_STRLEN);
+    }
+    if (error == ESP_OK) {
+        error = httpd_resp_send_chunk(
+            request, "]}", HTTPD_RESP_USE_STRLEN);
+    }
+    if (error == ESP_OK) {
+        error = httpd_resp_send_chunk(request, NULL, 0U);
+    }
+    return error;
+}
+
+static esp_err_t events_csv_handler(httpd_req_t *request)
+{
+    if (!authenticated(request)) {
+        return ESP_OK;
+    }
+    motion_clock_t clock = {0};
+    const size_t count = copy_history(&clock);
+    const int64_t now_ms = esp_timer_get_time() / 1000;
+    httpd_resp_set_type(request, "text/csv; charset=utf-8");
+    httpd_resp_set_hdr(
+        request,
+        "Content-Disposition",
+        "attachment; filename=motion-events.csv");
+    httpd_resp_set_hdr(request, "Cache-Control", "no-store");
+    esp_err_t error = httpd_resp_send_chunk(
+        request,
+        "id,start_epoch_seconds,end_epoch_seconds,duration_ms,status,"
+        "start_scan_id,end_scan_id,start_score,peak_score,trigger_score,"
+        "coverage_percent\r\n",
+        HTTPD_RESP_USE_STRLEN);
+    for (size_t index = 0U;
+         error == ESP_OK && index < count;
+         ++index) {
+        const motion_history_event_t *event =
+            &history_snapshot[index];
+        int64_t started_epoch = 0;
+        int64_t ended_epoch = 0;
+        const bool has_start = motion_clock_at(
+            &clock, event->started_monotonic_ms, &started_epoch);
+        const bool has_end =
+            !event->active &&
+            motion_clock_at(
+                &clock, event->ended_monotonic_ms, &ended_epoch);
+        const int64_t duration_ms =
+            (event->active ? now_ms : event->ended_monotonic_ms) -
+            event->started_monotonic_ms;
+        char start_text[24] = "";
+        char end_text[24] = "";
+        if (has_start) {
+            (void)snprintf(start_text,
+                           sizeof(start_text),
+                           "%" PRId64,
+                           started_epoch);
+        }
+        if (has_end) {
+            (void)snprintf(end_text,
+                           sizeof(end_text),
+                           "%" PRId64,
+                           ended_epoch);
+        }
+        char row[256];
+        (void)snprintf(
+            row,
+            sizeof(row),
+            "%" PRIu32 ",%s,%s"
+            ",%" PRId64 ",%s,%" PRIu32 ",%" PRIu32
+            ",%.2f,%.2f,%.2f,%.1f\r\n",
+            event->id,
+            start_text,
+            end_text,
+            duration_ms,
+            event->active ? "active" : "completed",
+            event->start_scan_id,
+            event->end_scan_id,
+            event->start_score_x100 / 100.0,
+            event->peak_score_x100 / 100.0,
+            event->trigger_score_x100 / 100.0,
+            event->coverage_permille / 10.0);
+        error = httpd_resp_send_chunk(
+            request, row, HTTPD_RESP_USE_STRLEN);
+    }
+    if (error == ESP_OK) {
+        error = httpd_resp_send_chunk(request, NULL, 0U);
+    }
+    return error;
+}
+
+static bool network_selection_changed(
+    const probe_config_blob_t *left,
+    const probe_config_blob_t *right)
+{
+    return left->mode != right->mode ||
+           left->ssid_count != right->ssid_count ||
+           memcmp(left->ssids,
+                  right->ssids,
+                  sizeof(left->ssids)) != 0;
+}
+
 static esp_err_t login_handler(httpd_req_t *request)
 {
     if (!read_request_body(request)) {
@@ -790,7 +1321,10 @@ static esp_err_t login_handler(httpd_req_t *request)
                    "motion_session=%s; Path=/; HttpOnly; SameSite=Strict",
                    session_token);
     httpd_resp_set_status(request, "303 See Other");
-    httpd_resp_set_hdr(request, "Location", "/");
+    httpd_resp_set_hdr(
+        request,
+        "Location",
+        request_spanish(request) ? "/?lang=es" : "/?lang=en");
     httpd_resp_set_hdr(request, "Set-Cookie", cookie);
     httpd_resp_set_hdr(request, "Cache-Control", "no-store");
     return httpd_resp_sendstr(request, "Acceso correcto");
@@ -953,8 +1487,9 @@ static esp_err_t save_handler(httpd_req_t *request)
     if (probe_config_load(&previous) != PROBE_CONFIG_OK) {
         probe_config_set_defaults(&previous);
     }
-    probe_config_blob_t config;
-    probe_config_set_defaults(&config);
+    probe_config_blob_t config = previous;
+    config.ssid_count = 0U;
+    memset(config.ssids, 0, sizeof(config.ssids));
     if (strcmp(mode, "auto") == 0) {
         config.mode = PROBE_CONFIG_MODE_AUTOMATIC;
     } else if (strcmp(mode, "manual") == 0) {
@@ -996,6 +1531,44 @@ static esp_err_t save_handler(httpd_req_t *request)
         return httpd_resp_send_err(
             request, HTTPD_400_BAD_REQUEST, "unknown mode");
     }
+    uint16_t trigger_score = 0U;
+    uint16_t trigger_consecutive = 0U;
+    uint16_t scan_delay = 0U;
+    uint16_t motion_duration = 0U;
+    uint16_t calibration_scans = 0U;
+    if (!read_u16(portal_body, "trigger_score", &trigger_score) ||
+        !read_u16(portal_body,
+                  "trigger_consecutive",
+                  &trigger_consecutive) ||
+        !read_u16(portal_body, "scan_delay", &scan_delay) ||
+        !read_u16(portal_body, "motion_duration", &motion_duration) ||
+        !read_u16(portal_body,
+                  "calibration_scans",
+                  &calibration_scans) ||
+        (trigger_score != PROBE_CONFIG_TRIGGER_SCORE_SENSITIVE_X100 &&
+         trigger_score != PROBE_CONFIG_TRIGGER_SCORE_BALANCED_X100 &&
+         trigger_score !=
+             PROBE_CONFIG_TRIGGER_SCORE_CONSERVATIVE_X100) ||
+        trigger_consecutive < PROBE_CONFIG_TRIGGER_CONSECUTIVE_MIN ||
+        trigger_consecutive > PROBE_CONFIG_TRIGGER_CONSECUTIVE_MAX ||
+        (scan_delay != PROBE_CONFIG_SCAN_DELAY_FAST_MS &&
+         scan_delay != PROBE_CONFIG_SCAN_DELAY_NORMAL_MS &&
+         scan_delay != PROBE_CONFIG_SCAN_DELAY_SLOW_MS) ||
+        (motion_duration != PROBE_CONFIG_MOTION_DURATION_SHORT_S &&
+         motion_duration != PROBE_CONFIG_MOTION_DURATION_NORMAL_S &&
+         motion_duration != PROBE_CONFIG_MOTION_DURATION_LONG_S) ||
+        (calibration_scans != PROBE_CONFIG_CALIBRATION_FAST_SCANS &&
+         calibration_scans != PROBE_CONFIG_CALIBRATION_NORMAL_SCANS &&
+         calibration_scans !=
+             PROBE_CONFIG_CALIBRATION_PRECISE_SCANS)) {
+        return httpd_resp_send_err(
+            request, HTTPD_400_BAD_REQUEST, "invalid detection settings");
+    }
+    config.trigger_score_x100 = trigger_score;
+    config.trigger_consecutive = (uint8_t)trigger_consecutive;
+    config.inter_scan_delay_ms = scan_delay;
+    config.motion_duration_seconds = (uint8_t)motion_duration;
+    config.calibration_scans = calibration_scans;
     char username[PROBE_CONFIG_ADMIN_USER_MAX_LENGTH * 3U + 1U] = "";
     char password[PROBE_CONFIG_ADMIN_PASSWORD_MAX_LENGTH * 3U + 1U] = "";
     if (httpd_query_key_value(
@@ -1019,8 +1592,25 @@ static esp_err_t save_handler(httpd_req_t *request)
     memcpy(config.admin_password,
            saved_password,
            strlen(saved_password) + 1U);
+    char action[16] = "";
+    if (httpd_query_key_value(
+            portal_body, "action", action, sizeof(action)) != ESP_OK ||
+        !url_decode(action) ||
+        (strcmp(action, "save") != 0 &&
+         strcmp(action, "recalibrate") != 0)) {
+        return httpd_resp_send_err(
+            request, HTTPD_400_BAD_REQUEST, "invalid action");
+    }
+    const bool recalibrate = strcmp(action, "recalibrate") == 0;
+    if (!recalibrate && network_selection_changed(&previous, &config)) {
+        return httpd_resp_send_err(
+            request,
+            HTTPD_400_BAD_REQUEST,
+            "network changes require recalibration");
+    }
     if (probe_config_save(&config) != PROBE_CONFIG_OK ||
-        reference_store_erase() != REFERENCE_STORE_OK) {
+        (recalibrate &&
+         reference_store_erase() != REFERENCE_STORE_OK)) {
         return httpd_resp_send_err(
             request, HTTPD_500_INTERNAL_SERVER_ERROR, "save failed");
     }
@@ -1031,12 +1621,24 @@ static esp_err_t save_handler(httpd_req_t *request)
         "content='width=device-width,initial-scale=1'><style>"
         "body{font:20px system-ui;max-width:600px;margin:30px auto;"
         "padding:20px}button{font-size:21px;padding:14px}</style>"
-        "<h1>Configuración guardada</h1>"
-        "<p>Al continuar, el dispositivo reiniciará y calibrará las redes "
-        "elegidas. La red <b>Motion-C3-Setup</b> volverá a aparecer y esta web "
-        "mostrará la detección y la gráfica en directo.</p>"
-        "<form method=post action=/apply><input type=hidden name=csrf value=",
+        "<h1>Configuración guardada</h1>",
         HTTPD_RESP_USE_STRLEN);
+    const char *saved_message =
+        recalibrate
+            ? "<p>Se han guardado los ajustes. Al continuar, el dispositivo "
+              "reiniciará y recalibrará las redes elegidas.</p>"
+            : "<p>Se han guardado los ajustes sin borrar redes ni referencias. "
+              "Al continuar, el dispositivo reiniciará para aplicarlos.</p>";
+    if (response == ESP_OK) {
+        response = httpd_resp_send_chunk(
+            request, saved_message, HTTPD_RESP_USE_STRLEN);
+    }
+    if (response == ESP_OK) {
+        response = httpd_resp_send_chunk(
+            request,
+            "<form method=post action=/apply><input type=hidden name=csrf value=",
+            HTTPD_RESP_USE_STRLEN);
+    }
     if (response != ESP_OK) {
         return response;
     }
@@ -1051,6 +1653,43 @@ static esp_err_t save_handler(httpd_req_t *request)
     if (response == ESP_OK) {
         response = httpd_resp_send_chunk(request, NULL, 0U);
     }
+    return response;
+}
+
+static esp_err_t restore_detection_handler(httpd_req_t *request)
+{
+    if (!authenticated(request)) {
+        return ESP_OK;
+    }
+    if (!read_request_body(request) || !valid_csrf(portal_body)) {
+        return httpd_resp_send_err(
+            request, HTTPD_400_BAD_REQUEST, "invalid request");
+    }
+    probe_config_blob_t config;
+    if (probe_config_load(&config) != PROBE_CONFIG_OK) {
+        return httpd_resp_send_err(
+            request, HTTPD_500_INTERNAL_SERVER_ERROR, "load failed");
+    }
+    probe_config_blob_t defaults;
+    probe_config_set_defaults(&defaults);
+    config.trigger_score_x100 = defaults.trigger_score_x100;
+    config.trigger_consecutive = defaults.trigger_consecutive;
+    config.inter_scan_delay_ms = defaults.inter_scan_delay_ms;
+    config.motion_duration_seconds = defaults.motion_duration_seconds;
+    config.calibration_scans = defaults.calibration_scans;
+    if (probe_config_save(&config) != PROBE_CONFIG_OK) {
+        return httpd_resp_send_err(
+            request, HTTPD_500_INTERNAL_SERVER_ERROR, "save failed");
+    }
+    httpd_resp_set_type(request, "text/html; charset=utf-8");
+    const esp_err_t response = httpd_resp_sendstr(
+        request,
+        "<!doctype html><meta name=viewport content='width=device-width'>"
+        "<h1>Ajustes restaurados</h1><p>Se conservaron credenciales, redes y "
+        "referencias. El dispositivo se reiniciará para aplicar los valores "
+        "iniciales.</p>");
+    (void)xTaskCreate(
+        restart_task, "portal_restart", 2048U, NULL, 4U, NULL);
     return response;
 }
 
@@ -1092,10 +1731,13 @@ esp_err_t maintenance_portal_start(const char *ap_ssid,
         return ESP_OK;
     }
     network_mutex = xSemaphoreCreateMutex();
-    if (network_mutex == NULL) {
+    history_mutex = xSemaphoreCreateMutex();
+    if (network_mutex == NULL || history_mutex == NULL) {
         atomic_store(&portal_active, false);
         return ESP_ERR_NO_MEM;
     }
+    motion_history_init(&motion_history);
+    motion_clock_clear(&motion_clock);
     probe_config_blob_t config;
     if (probe_config_load(&config) != PROBE_CONFIG_OK) {
         probe_config_set_defaults(&config);
@@ -1130,7 +1772,7 @@ esp_err_t maintenance_portal_start(const char *ap_ssid,
         error = esp_wifi_set_config(WIFI_IF_AP, &wifi_config);
     }
     httpd_config_t http_config = HTTPD_DEFAULT_CONFIG();
-    http_config.max_uri_handlers = 10U;
+    http_config.max_uri_handlers = 16U;
     http_config.uri_match_fn = httpd_uri_match_wildcard;
     if (error == ESP_OK) {
         error = httpd_start(&server, &http_config);
@@ -1165,6 +1807,31 @@ esp_err_t maintenance_portal_start(const char *ap_ssid,
         const httpd_uri_t apply = {
             .uri = "/apply", .method = HTTP_POST, .handler = apply_handler,
         };
+        const httpd_uri_t restore_detection = {
+            .uri = "/restore-detection",
+            .method = HTTP_POST,
+            .handler = restore_detection_handler,
+        };
+        const httpd_uri_t clock_uri = {
+            .uri = "/clock",
+            .method = HTTP_POST,
+            .handler = clock_handler,
+        };
+        const httpd_uri_t events = {
+            .uri = "/events",
+            .method = HTTP_GET,
+            .handler = events_json_handler,
+        };
+        const httpd_uri_t events_json = {
+            .uri = "/events.json",
+            .method = HTTP_GET,
+            .handler = events_json_handler,
+        };
+        const httpd_uri_t events_csv = {
+            .uri = "/events.csv",
+            .method = HTTP_GET,
+            .handler = events_csv_handler,
+        };
         const httpd_uri_t fallback = {
             .uri = "/*",
             .method = HTTP_GET,
@@ -1189,6 +1856,22 @@ esp_err_t maintenance_portal_start(const char *ap_ssid,
         }
         if (error == ESP_OK) {
             error = httpd_register_uri_handler(server, &apply);
+        }
+        if (error == ESP_OK) {
+            error = httpd_register_uri_handler(
+                server, &restore_detection);
+        }
+        if (error == ESP_OK) {
+            error = httpd_register_uri_handler(server, &clock_uri);
+        }
+        if (error == ESP_OK) {
+            error = httpd_register_uri_handler(server, &events);
+        }
+        if (error == ESP_OK) {
+            error = httpd_register_uri_handler(server, &events_json);
+        }
+        if (error == ESP_OK) {
+            error = httpd_register_uri_handler(server, &events_csv);
         }
         if (error == ESP_OK) {
             error = httpd_register_uri_handler(server, &fallback);

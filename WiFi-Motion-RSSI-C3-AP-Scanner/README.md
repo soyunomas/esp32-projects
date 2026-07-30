@@ -18,7 +18,9 @@ Prototipo funcional compilado, probado y flasheado en un ESP32-C3 SuperMini:
 - seguimiento interno por BSSID;
 - calibración inicial y recalibración diferida desde la web;
 - detector multirreferencia con umbral adaptativo;
-- gráfica temporal, cobertura y confirmación `1/2`;
+- gráfica temporal, cobertura y progreso de confirmación;
+- historial en memoria de las últimas 128 detecciones y descarga JSON/CSV;
+- reloj local ajustable desde el navegador;
 - portal cautivo y punto de acceso local permanente;
 - configuración y referencias persistentes en NVS;
 - telemetría JSON Lines por USB.
@@ -35,8 +37,8 @@ y combina las desviaciones normalizadas de las referencias visibles.
 
 El umbral se calcula con una ventana fija de 32 scores tranquilos usando
 mediana y MAD. Nunca baja del mínimo compilado (`2,50`), se congela durante una
-posible detección o durante `MOTION` y, con el perfil predeterminado, exige dos
-barridos consecutivos por encima del umbral. La pérdida de cobertura se informa
+posible detección o durante `MOTION` y, con el perfil predeterminado, basta un
+barrido por encima del umbral. La pérdida de cobertura se informa
 como `DEGRADED` o `NO_DATA`, no como movimiento.
 
 ## Inicio rápido con el firmware incluido
@@ -77,15 +79,33 @@ El dispositivo mantiene esta red mientras detecta:
 
 El portal cautivo intenta abrir el formulario automáticamente. Si no lo hace,
 abra `http://192.168.4.1`. El usuario y la contraseña web pueden cambiarse
-desde Configuración.
+desde Configuración. La interfaz se abre en inglés de forma predeterminada y
+los enlaces **English** y **Español** permiten cambiar de idioma sin modificar
+la configuración.
 
 La página muestra:
 
 - estado grande: calibrando, sin movimiento, movimiento o cobertura insuficiente;
 - gráfica de dos minutos con score, umbral adaptativo y detecciones;
 - cobertura y número de referencias observadas;
-- progreso de confirmación, como `1/2`;
+- progreso de confirmación cuando se eligen dos o tres lecturas;
+- tabla con las últimas 128 detecciones y descargas en JSON o CSV;
 - buscador de redes y botones **+ Añadir** y **Quitar**.
+
+Como el equipo no obtiene la hora de Internet, después de cada arranque la
+sección **Fecha y hora** propone la hora local del teléfono u ordenador.
+Confírmela para fechar las detecciones. El reloj y el historial viven en RAM:
+se conservan mientras el ESP32 siga encendido y se borran al reiniciar. Si se
+ajusta la hora después de una detección, el portal calcula también la hora de
+los eventos anteriores de esa misma sesión.
+
+La configuración expone únicamente perfiles sencillos de sensibilidad,
+confirmación (1, 2 o 3 lecturas), velocidad, duración del estado de movimiento
+(2, 4 u 8 segundos) y calibración (15, 25 o 40 escaneos). El perfil
+predeterminado usa una lectura de confirmación y 25 escaneos de calibración.
+**Guardar configuración** conserva las referencias; **Guardar y recalibrar**
+las sustituye. **Restaurar ajustes de detección** no borra credenciales, redes
+elegidas ni referencias.
 
 En modo automático se eligen los BSSID más estables. En modo manual se pueden
 añadir hasta ocho SSID desde los resultados de búsqueda. El ESP32 nunca intenta
@@ -98,12 +118,16 @@ En **Calibración sin presencia**:
 1. elija entre 5 y 300 segundos;
 2. pulse **Salir y calibrar**;
 3. abandone la zona durante la cuenta atrás;
-4. permanezca fuera mientras avanza la calibración de 40 barridos;
+4. permanezca fuera mientras avanza la calibración (25 barridos por defecto);
 5. regrese cuando la web vuelva a mostrar **Sin movimiento**.
 
 Al comenzar se eliminan las referencias anteriores, se vuelven a explorar
 todos los canales y se construye una línea base nueva. Durante la cuenta atrás
 el detector anterior continúa funcionando.
+
+Una calibración rápida de 15 escaneos acaba antes, pero puede seleccionar
+referencias menos estables; la normal usa 25 y la precisa 40. La elección se
+aplica tanto a la primera calibración como a las solicitadas desde el portal.
 
 ## Compilar y probar
 

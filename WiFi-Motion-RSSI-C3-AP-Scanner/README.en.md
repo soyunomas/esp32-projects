@@ -18,7 +18,7 @@ Functional prototype compiled, tested, and flashed on an ESP32-C3 SuperMini:
 - internal tracking by BSSID;
 - initial calibration and delayed recalibration from the web UI;
 - multi-reference detector with an adaptive threshold;
-- temporal chart, coverage, and `1/2` confirmation feedback;
+- temporal chart, coverage, and confirmation progress;
 - captive portal and permanent local access point;
 - configuration and reference persistence in NVS;
 - JSON Lines telemetry over USB.
@@ -35,8 +35,8 @@ and combines the normalized deviations of the visible references.
 
 The threshold is calculated from a fixed window of 32 quiet scores using the
 median and MAD. It never falls below the compiled minimum (`2.50`), freezes
-during a possible trigger and during `MOTION`, and requires two consecutive
-high scans with the default profile. Insufficient coverage is reported as
+during a possible trigger and during `MOTION`; the default profile requires
+one high scan. Insufficient coverage is reported as
 `DEGRADED` or `NO_DATA`, not as motion.
 
 ## Quick start with the included firmware
@@ -84,8 +84,25 @@ The dashboard provides:
 - a large calibrating, idle, motion, or insufficient-coverage state;
 - a two-minute chart with score, live adaptive threshold, and detections;
 - coverage and observed-reference counts;
-- trigger confirmation progress such as `1/2`;
-- network search with the Spanish **+ Añadir** and **Quitar** controls.
+- confirmation progress when two or three readings are selected;
+- a table with the latest 128 detections and JSON/CSV downloads;
+- network search with **+ Add** and **Remove** controls.
+
+English is the default interface. The **English** and **Español** links switch
+language without changing the detector configuration.
+
+Because the device cannot obtain Internet time, the **Date and time** section
+offers the phone or computer's local time after each boot. Confirm it to date
+the detections. The clock and history live in RAM: they remain available while
+the ESP32 is powered and are cleared by a restart. Setting the clock after an
+event also dates earlier detections from the same session.
+
+Configuration exposes only simple profiles for sensitivity, confirmation
+(1, 2, or 3 readings), detection speed, motion-state duration (2, 4, or 8
+seconds), and calibration (15, 25, or 40 scans). Defaults are one confirmation
+reading and 25 calibration scans. **Save configuration** preserves existing
+references, **Save and recalibrate** replaces them, and **Restore detection
+settings** preserves credentials, selected networks, and references.
 
 Automatic mode selects the most stable BSSIDs. Manual mode allows up to eight
 SSIDs to be added from the search results. The ESP32 never joins those networks
@@ -93,20 +110,21 @@ and never asks for their passwords.
 
 ## Calibrating an empty environment
 
-Under **Calibración sin presencia**:
+Under **Empty-room calibration**:
 
 1. choose a delay from 5 to 300 seconds;
-2. press **Salir y calibrar**;
+2. press **Leave and calibrate**;
 3. leave the monitored area during the countdown;
-4. stay away while the 40 calibration scans progress;
-5. return after the dashboard reports **Sin movimiento**.
+4. stay away while calibration progresses (25 scans by default);
+5. return after the dashboard reports **No motion**.
 
 When calibration starts, previous references are deleted, all channels are
 scanned again, and a new baseline is created. The previous detector remains
 active during the countdown.
 
-The embedded dashboard is currently in Spanish; this README provides the
-English operating instructions.
+The 15-scan fast profile finishes sooner but may select less stable references;
+the normal profile uses 25 scans and the precise profile uses 40. This choice
+applies to initial and portal-requested calibration.
 
 ## Building and testing
 

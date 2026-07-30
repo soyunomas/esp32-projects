@@ -46,6 +46,21 @@ target_compile_options(
 add_test(NAME scan_scheduler_tests COMMAND scan_scheduler_tests)
 
 add_executable(
+    motion_history_tests
+    test_motion_history.c
+    ../../components/motion_history/motion_history.c
+)
+target_include_directories(
+    motion_history_tests
+    PRIVATE ../../components/motion_history/include
+)
+target_compile_features(motion_history_tests PRIVATE c_std_11)
+target_compile_options(
+    motion_history_tests PRIVATE -Wall -Wextra -Wpedantic -Werror
+)
+add_test(NAME motion_history_tests COMMAND motion_history_tests)
+
+add_executable(
     reference_selector_tests
     test_reference_selector.c
     ../../components/reference_selector/reference_selector.c
@@ -113,6 +128,27 @@ target_compile_options(
     probe_config_tests PRIVATE -Wall -Wextra -Wpedantic -Werror
 )
 add_test(NAME probe_config_tests COMMAND probe_config_tests)
+
+add_executable(
+    probe_config_nvs_tests
+    test_probe_config_nvs.c
+    ../../components/probe_config/probe_config_codec.c
+    ../../components/probe_config/probe_config_nvs.c
+    ../../components/reference_store/reference_store_codec.c
+)
+target_include_directories(
+    probe_config_nvs_tests
+    PRIVATE
+        fakes
+        ../../components/probe_config/include
+        ../../components/reference_store/include
+        ../../components/reference_selector/include
+)
+target_compile_features(probe_config_nvs_tests PRIVATE c_std_11)
+target_compile_options(
+    probe_config_nvs_tests PRIVATE -Wall -Wextra -Wpedantic -Werror
+)
+add_test(NAME probe_config_nvs_tests COMMAND probe_config_nvs_tests)
 
 add_executable(
     multiref_detector_tests

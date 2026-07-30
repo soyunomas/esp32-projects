@@ -22,19 +22,35 @@ probe_config_status_t probe_config_load(probe_config_blob_t *config)
     if (error != ESP_OK) {
         return PROBE_CONFIG_IO_ERROR;
     }
-    size_t size = sizeof(*config);
-    memset(config, 0, sizeof(*config));
-    error = nvs_get_blob(handle, PROBE_CONFIG_KEY, config, &size);
+    size_t size = 0U;
+    error = nvs_get_blob(handle, PROBE_CONFIG_KEY, NULL, &size);
+    if (error != ESP_OK) {
+        nvs_close(handle);
+        return error == ESP_ERR_NVS_NOT_FOUND
+                   ? PROBE_CONFIG_NOT_FOUND
+                   : PROBE_CONFIG_IO_ERROR;
+    }
+    uint8_t raw[sizeof(*config)] = {0};
+    if (size > sizeof(raw)) {
+        nvs_close(handle);
+        return PROBE_CONFIG_INVALID;
+    }
+    error = nvs_get_blob(handle, PROBE_CONFIG_KEY, raw, &size);
     nvs_close(handle);
     if (error == ESP_ERR_NVS_NOT_FOUND) {
         return PROBE_CONFIG_NOT_FOUND;
     }
-    if (error != ESP_OK || size != sizeof(*config)) {
-        return error == ESP_OK ? PROBE_CONFIG_INVALID
-                               : PROBE_CONFIG_IO_ERROR;
+    if (error != ESP_OK) {
+        return PROBE_CONFIG_IO_ERROR;
     }
-    return probe_config_validate(config) ? PROBE_CONFIG_OK
-                                         : PROBE_CONFIG_INVALID;
+    bool changed = false;
+    if (!probe_config_decode(raw, size, config, &changed)) {
+        return PROBE_CONFIG_INVALID;
+    }
+    if (changed && probe_config_save(config) != PROBE_CONFIG_OK) {
+        return PROBE_CONFIG_IO_ERROR;
+    }
+    return PROBE_CONFIG_OK;
 }
 
 probe_config_status_t probe_config_save(probe_config_blob_t *config)

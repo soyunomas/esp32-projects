@@ -63,6 +63,7 @@ static const char *TAG = "ap_scan_probe";
 static QueueHandle_t scan_done_queue;
 static SemaphoreHandle_t telemetry_mutex;
 static SemaphoreHandle_t marker_mutex;
+static probe_config_blob_t runtime_config;
 static event_marker_t marker;
 static atomic_uint_fast32_t dropped_scan_events;
 
@@ -421,7 +422,8 @@ static void emit_stored_reference(const reference_store_entry_t *entry,
 }
 
 static bool detector_from_store(multiref_detector_t *detector,
-                                const reference_store_blob_t *blob)
+                                const reference_store_blob_t *blob,
+                                const scan_scheduler_t *scheduler)
 {
     multiref_reference_t
         references[MULTIREF_DETECTOR_MAX_REFERENCES] = {0};
@@ -439,10 +441,10 @@ static bool detector_from_store(multiref_detector_t *detector,
             CONFIG_PROBE_DETECTOR_MINIMUM_COVERAGE_PERCENT * 10,
         .noise_floor_x10 =
             CONFIG_PROBE_DETECTOR_NOISE_FLOOR_DB_X10,
-        .trigger_score_x100 =
-            CONFIG_PROBE_DETECTOR_TRIGGER_SCORE_X100,
+        .trigger_score_x100 = runtime_config.trigger_score_x100,
         .release_score_x100 =
-            CONFIG_PROBE_DETECTOR_RELEASE_SCORE_X100,
+            probe_config_release_score_x100(
+                runtime_config.trigger_score_x100),
         .adaptive_sigma_x100 =
             CONFIG_PROBE_DETECTOR_ADAPTIVE_SIGMA_X100,
         .baseline_alpha_permille =
@@ -450,10 +452,12 @@ static bool detector_from_store(multiref_detector_t *detector,
         .adaptive_window =
             CONFIG_PROBE_DETECTOR_ADAPTIVE_WINDOW,
         .warmup_scans = CONFIG_PROBE_DETECTOR_WARMUP_SCANS,
-        .trigger_consecutive =
-            CONFIG_PROBE_DETECTOR_TRIGGER_CONSECUTIVE,
-        .clear_consecutive =
-            CONFIG_PROBE_DETECTOR_CLEAR_CONSECUTIVE,
+        .trigger_consecutive = runtime_config.trigger_consecutive,
+        .clear_consecutive = probe_config_clear_consecutive(
+            runtime_config.motion_duration_seconds,
+            runtime_config.inter_scan_delay_ms +
+                (uint32_t)scan_scheduler_channel_count(scheduler) *
+                    PROBE_DWELL_MAX_MS),
         .unhealthy_consecutive =
             CONFIG_PROBE_DETECTOR_UNHEALTHY_CONSECUTIVE,
         .recovery_consecutive =
@@ -598,9 +602,13 @@ static bool finish_calibration(observation_store_t *store,
                                "manual_ssid");
         return false;
     }
+    const uint16_t calibration_minimum_samples =
+        runtime_config.calibration_scans <
+                CONFIG_PROBE_SELECTOR_MINIMUM_SAMPLES
+            ? runtime_config.calibration_scans
+            : CONFIG_PROBE_SELECTOR_MINIMUM_SAMPLES;
     const reference_selector_policy_t policy = {
-        .minimum_samples =
-            CONFIG_PROBE_SELECTOR_MINIMUM_SAMPLES,
+        .minimum_samples = calibration_minimum_samples,
         .minimum_presence_permille =
             CONFIG_PROBE_SELECTOR_MINIMUM_PRESENCE_PERCENT * 10,
         .minimum_rssi_x10 =
@@ -706,7 +714,7 @@ static void scan_task(void *argument)
         observation_store_init(
             &calibration_store,
             OBSERVATION_STORE_MAX_ENTRIES,
-            CONFIG_PROBE_CALIBRATION_SCANS) ==
+            runtime_config.calibration_scans) ==
                 OBSERVATION_STORE_OK
             ? ESP_OK
             : ESP_ERR_INVALID_ARG);
@@ -717,6 +725,8 @@ static void scan_task(void *argument)
                                  &manual_ssid_count)
             ? ESP_OK
             : ESP_ERR_INVALID_ARG);
+    maintenance_portal_update_calibration(
+        false, 0U, runtime_config.calibration_scans);
     bool calibration_finished = false;
     bool calibration_warning_reported = false;
     bool detector_ready = false;
@@ -733,7 +743,8 @@ static void scan_task(void *argument)
     if (persistence_status == REFERENCE_STORE_OK &&
         scheduler_from_store(&scheduler, &persisted)) {
         calibration_finished = true;
-        detector_ready = detector_from_store(&detector, &persisted);
+        detector_ready =
+            detector_from_store(&detector, &persisted, &scheduler);
         const char *selection_mode =
             persisted.manual_selection ? "manual" : "automatic";
         for (uint8_t index = 0U; index < persisted.count; ++index) {
@@ -764,8 +775,10 @@ static void scan_task(void *argument)
             "\"selection_mode\":\"%s\",\"target_scans\":%d,"
             "\"channel_mode\":\"all\",\"persistence_status\":%d}",
             manual_ssid_count > 0U ? "manual" : "automatic",
-            CONFIG_PROBE_CALIBRATION_SCANS,
+            runtime_config.calibration_scans,
             persistence_status);
+        maintenance_portal_update_calibration(
+            true, 0U, runtime_config.calibration_scans);
     }
 
     for (;;) {
@@ -780,7 +793,7 @@ static void scan_task(void *argument)
                 observation_store_init(
                     &calibration_store,
                     OBSERVATION_STORE_MAX_ENTRIES,
-                    CONFIG_PROBE_CALIBRATION_SCANS) ==
+                    runtime_config.calibration_scans) ==
                         OBSERVATION_STORE_OK
                     ? ESP_OK
                     : ESP_ERR_INVALID_ARG);
@@ -790,7 +803,7 @@ static void scan_task(void *argument)
             calibration_warning_reported = false;
             detector_ready = false;
             maintenance_portal_update_calibration(
-                true, 0U, CONFIG_PROBE_CALIBRATION_SCANS);
+                true, 0U, runtime_config.calibration_scans);
             update_status_led(MULTIREF_STATE_CALIBRATING, scan_id);
             telemetry_emit(
                 "{\"schema\":\"" PROBE_SCHEMA "\","
@@ -799,7 +812,7 @@ static void scan_task(void *argument)
                 "\"channel_mode\":\"all\",\"persistence_status\":%d,"
                 "\"source\":\"portal\"}",
                 manual_ssid_count > 0U ? "manual" : "automatic",
-                CONFIG_PROBE_CALIBRATION_SCANS,
+                runtime_config.calibration_scans,
                 erase_status);
         }
         scan_id++;
@@ -889,7 +902,8 @@ static void scan_task(void *argument)
             }
         }
         if (failed) {
-            vTaskDelay(pdMS_TO_TICKS(CONFIG_PROBE_INTER_SCAN_DELAY_MS));
+            vTaskDelay(
+                pdMS_TO_TICKS(runtime_config.inter_scan_delay_ms));
             continue;
         }
 
@@ -924,7 +938,7 @@ static void scan_task(void *argument)
             (unsigned)scan_scheduler_channel_count(&scheduler),
             scan_scheduler_channel_at(&scheduler, 0U),
             scan_scheduler_channel_at(&scheduler, 1U),
-            CONFIG_PROBE_INTER_SCAN_DELAY_MS,
+            runtime_config.inter_scan_delay_ms,
             reported_count,
             record_count,
             truncated ? "true" : "false",
@@ -945,7 +959,7 @@ static void scan_task(void *argument)
                 maintenance_portal_update_calibration(
                     false,
                     calibration_store.completed_scans,
-                    CONFIG_PROBE_CALIBRATION_SCANS);
+                    runtime_config.calibration_scans);
             } else {
                 for (uint16_t index = 0U;
                      index < record_count;
@@ -973,7 +987,7 @@ static void scan_task(void *argument)
                 maintenance_portal_update_calibration(
                     true,
                     calibration_store.completed_scans,
-                    CONFIG_PROBE_CALIBRATION_SCANS);
+                    runtime_config.calibration_scans);
                 if (store_status != OBSERVATION_STORE_OK) {
                     emit_calibration_error(
                         scan_id, store_status, "end_scan");
@@ -981,9 +995,9 @@ static void scan_task(void *argument)
                     maintenance_portal_update_calibration(
                         false,
                         calibration_store.completed_scans,
-                        CONFIG_PROBE_CALIBRATION_SCANS);
+                        runtime_config.calibration_scans);
                 } else if (calibration_store.completed_scans >=
-                           CONFIG_PROBE_CALIBRATION_SCANS) {
+                           runtime_config.calibration_scans) {
                     const bool completed =
                         finish_calibration(&calibration_store,
                                            &scheduler,
@@ -992,7 +1006,7 @@ static void scan_task(void *argument)
                     maintenance_portal_update_calibration(
                         false,
                         calibration_store.completed_scans,
-                        CONFIG_PROBE_CALIBRATION_SCANS);
+                        runtime_config.calibration_scans);
                     if (!completed) {
                         scheduler = make_scan_scheduler();
                         telemetry_emit(
@@ -1012,7 +1026,8 @@ static void scan_task(void *argument)
             reference_store_blob_t calibrated = {0};
             if (reference_store_load(&calibrated) ==
                     REFERENCE_STORE_OK &&
-                detector_from_store(&detector, &calibrated)) {
+                detector_from_store(
+                    &detector, &calibrated, &scheduler)) {
                 detector_ready = true;
             }
         }
@@ -1049,7 +1064,7 @@ static void scan_task(void *argument)
             }
         }
 
-        vTaskDelay(pdMS_TO_TICKS(CONFIG_PROBE_INTER_SCAN_DELAY_MS));
+        vTaskDelay(pdMS_TO_TICKS(runtime_config.inter_scan_delay_ms));
     }
 }
 
@@ -1197,6 +1212,16 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(error);
 
+    const probe_config_status_t config_status =
+        probe_config_load(&runtime_config);
+    if (config_status != PROBE_CONFIG_OK) {
+        probe_config_set_defaults(&runtime_config);
+        ESP_ERROR_CHECK(probe_config_save(&runtime_config) ==
+                                PROBE_CONFIG_OK
+                            ? ESP_OK
+                            : ESP_FAIL);
+    }
+
     scan_done_queue =
         xQueueCreate(PROBE_SCAN_QUEUE_LENGTH, sizeof(scan_done_message_t));
     telemetry_mutex = xSemaphoreCreateMutex();
@@ -1236,7 +1261,7 @@ void app_main(void)
         (unsigned)scan_scheduler_channel_count(&scheduler),
         scan_scheduler_channel_at(&scheduler, 0U),
         scan_scheduler_channel_at(&scheduler, 1U),
-        CONFIG_PROBE_INTER_SCAN_DELAY_MS,
+        runtime_config.inter_scan_delay_ms,
         CONFIG_PROBE_MAX_AP_RECORDS,
         CONFIG_PROBE_MARKER_GPIO,
         esp_reset_reason());
