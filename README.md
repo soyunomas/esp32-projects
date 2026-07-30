@@ -11,8 +11,9 @@ ESP32-S3 boards. The repository contains three distinct types of device:
 - experimental devices that detect changes in Wi-Fi propagation compatible
   with movement.
 
-Each folder is a self-contained project with its own hardware requirements,
-flashing instructions, configuration guide, and limitations.
+Each project has its own hardware requirements, flashing instructions,
+configuration guide, and limitations. Most are included as folders in this
+repository; the ESP32-S3 Tailscale projects link to their own repositories.
 
 ## Choose a project
 
@@ -20,6 +21,8 @@ flashing instructions, configuration guide, and limitations.
 |---|---|---|
 | Extend a home WPA2-Personal Wi-Fi network | [WiFi-Repeater](./WiFi-Repeater) | ESP32-C3 SuperMini |
 | Extend an enterprise network that uses a username and password | [WiFi-Repeater-WPA2-Enterprise](./WiFi-Repeater-WPA2-Enterprise) | ESP32-C3 SuperMini |
+| Extend an enterprise network and reach its devices remotely through Tailscale | [esp32-s3-tailscale-enterprise](https://github.com/soyunomas/esp32-s3-tailscale-enterprise) | ESP32-S3 |
+| Combine the Tailscale repeater with programmable USB HID automation for authorized labs | [esp32-s3-tailscale-marauder](https://github.com/soyunomas/esp32-s3-tailscale-marauder) | ESP32-S3 |
 | Trigger two HTTP or MQTT actions with physical buttons | [Smartbutton ESP32-C3 SuperMini](./Smartbutton-esp32-C3-Supermini) | ESP32-C3 SuperMini |
 | Trigger five HTTP or MQTT actions | [Smartbutton ESP32-C3 SuperMini Plus 5](./Smartbutton-esp32-C3-Supermini-Plus-5) | ESP32-C3 SuperMini Plus |
 | Connect PIR, microwave-radar, button, or other digital-output sensors | [Smartbutton ESP32-C3 Sensors](./Smartbutton-esp32-C3-Supermini-SENSORS) | ESP32-C3 SuperMini |
@@ -49,6 +52,22 @@ updates.
 for networks that use EAP-PEAP or EAP-TTLS authentication, commonly found in
 companies and educational institutions. It also adds TCP/UDP port forwarding
 and a web log viewer.
+
+### esp32-s3-tailscale-enterprise
+
+[esp32-s3-tailscale-enterprise](https://github.com/soyunomas/esp32-s3-tailscale-enterprise)
+combines an ESP32-S3 WPA2-Enterprise repeater with NAPT, a web interface, and
+Tailscale subnet routing. It is intended for extending an enterprise Wi-Fi
+network while also making devices behind the ESP32 reachable through a
+Tailscale network.
+
+### esp32-s3-tailscale-marauder
+
+[esp32-s3-tailscale-marauder](https://github.com/soyunomas/esp32-s3-tailscale-marauder)
+builds on the ESP32-S3 enterprise repeater and Tailscale features with
+programmable USB HID automation. It supports DuckyScript, stored macros,
+multiple keyboard layouts, and scheduled execution for authorized laboratory,
+testing, and automation environments.
 
 ## Smart buttons and sensor inputs
 
@@ -109,17 +128,6 @@ passwords. Instead, it:
 
 This variant works locally and includes ready-to-flash USB firmware. It does
 not provide Telegram notifications or OTA updates.
-
-## Related external repositories
-
-These ESP32-S3 projects are maintained in separate repositories and are listed
-here for discovery:
-
-- [esp32-s3-tailscale-enterprise](https://github.com/soyunomas/esp32-s3-tailscale-enterprise):
-  WPA2-Enterprise repeater, NAPT, web UI, and Tailscale subnet routing.
-- [esp32-s3-tailscale-marauder](https://github.com/soyunomas/esp32-s3-tailscale-marauder):
-  adds authorized lab-oriented HID automation, DuckyScript support, stored
-  macros, and scheduled execution.
 
 ## Before flashing
 
