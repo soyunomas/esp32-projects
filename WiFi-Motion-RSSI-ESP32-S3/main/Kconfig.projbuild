@@ -178,6 +178,26 @@ config MOTION_CSI_TRAFFIC_PAYLOAD_BYTES
     range 1 256
     default 1
 
+config MOTION_CSI_DATASET_STREAM_ENABLED
+    bool "Stream raw CSI records for person-ID datasets"
+    depends on MOTION_CSI_ENABLED
+    default n
+    help
+        Emits CSI_RAW_V1 lines on stdout. Each line contains receive timestamp,
+        Wi-Fi timestamp, RSSI, first-word-invalid flag, CSI length, and the raw
+        signed I/Q byte vector encoded as hexadecimal. Keep disabled for normal
+        motion-detector deployments because this produces substantially more
+        serial traffic.
+
+config MOTION_CSI_DATASET_INTERVAL_MS
+    int "Raw CSI dataset minimum frame interval (ms)"
+    depends on MOTION_CSI_DATASET_STREAM_ENABLED
+    range 10 1000
+    default 50
+    help
+        Rate-limits raw dataset output. The default is at most 20 CSI frames/s,
+        which fits comfortably at 115200 baud for typical ESP32-S3 CSI frames.
+
 choice MOTION_OUTPUT_FORMAT
     prompt "Serial output format"
     default MOTION_OUTPUT_CSV
